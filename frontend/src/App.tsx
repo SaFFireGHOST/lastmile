@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
+import { LandingPage } from './pages/LandingPage';
 import { RiderDashboard } from './pages/RiderDashboard';
 import { DriverDashboard } from './pages/DriverDashboard';
 import { ToastContainer } from 'react-toastify';
@@ -25,8 +26,11 @@ const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, 
 
 const HomeRedirect = () => {
   const { user, isAuthenticated } = useAuth();
-  if (!isAuthenticated) return <Navigate to="/login" />;
-  return <Navigate to={user?.role === 'RIDER' ? '/rider' : '/driver'} />;
+  if (isAuthenticated) {
+    return <Navigate to={user?.role === 'RIDER' ? '/rider' : '/driver'} />;
+  }
+  // If not authenticated, show landing page
+  return <LandingPage />;
 };
 
 function App() {
