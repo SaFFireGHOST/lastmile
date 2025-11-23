@@ -142,10 +142,9 @@ async def signup(user_stub: user_pb2_grpc.UserServiceStub):
 
     name = input("Name: ").strip() or "Test User"
     phone = input("Phone: ").strip() or "1234567890"
-    rating = float(input("Rating [5.0]: ").strip() or "5.0")
     password = input("Password [secret]: ").strip() or "secret"
 
-    user = common_pb2.User(role=role_enum, name=name, phone=phone, rating=rating)
+    user = common_pb2.User(role=role_enum, name=name, phone=phone)
     resp = await user_stub.CreateUser(user_pb2.CreateUserRequest(user=user, password=password))
     print("\n[UserService] Created user:")
     print(resp)
@@ -240,7 +239,7 @@ async def main():
             elif current_role == common_pb2.DRIVER:
                 print("  1) Register a driver route")
             
-            print("  9) Logout")
+            print("  2) Logout")
             print("  0) Exit")
             choice = input("Select: ").strip()
 
@@ -255,7 +254,7 @@ async def main():
                         await register_driver_route(driver_stub, current_user_id)
                     except Exception as e:
                         print(f"[error] Register route failed: {e}")
-            elif choice == "9":
+            elif choice == "2":
                 current_user_id = None
                 current_role = None
                 print("Logged out.")

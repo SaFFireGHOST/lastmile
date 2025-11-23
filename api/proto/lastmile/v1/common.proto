@@ -13,7 +13,6 @@ message User {
   Role role = 2;
   string name = 3;
   string phone = 4;
-  double rating = 5;
 }
 
 message Station {

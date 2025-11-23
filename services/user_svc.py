@@ -24,14 +24,13 @@ class UserServer(user_pb2_grpc.UserServiceServicer):
             "role": u.role,
             "name": u.name,
             "phone": u.phone,
-            "rating": u.rating,
             "password": request.password
         }
         result = self.users.insert_one(user_doc)
         uid = str(result.inserted_id)
         
         # Update the doc with the ID string for easier retrieval if needed, or just construct the response
-        nu = common_pb2.User(id=uid, role=u.role, name=u.name, phone=u.phone, rating=u.rating)
+        nu = common_pb2.User(id=uid, role=u.role, name=u.name, phone=u.phone)
         return user_pb2.CreateUserResponse(user=nu)
 
     async def GetUser(self, request, context):
@@ -53,7 +52,6 @@ class UserServer(user_pb2_grpc.UserServiceServicer):
                 role=doc["role"],
                 name=doc["name"],
                 phone=doc["phone"],
-                rating=doc.get("rating", 5.0)
             )
             return user_pb2.GetUserResponse(user=u)
         return user_pb2.GetUserResponse()
