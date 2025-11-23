@@ -2,6 +2,7 @@ import asyncio
 import grpc
 from lastmile.v1 import driver_pb2, driver_pb2_grpc
 from common.run import serve
+from common.db import get_db
 
 class DriverStore:
     def __init__(self):
@@ -10,36 +11,89 @@ class DriverStore:
 
 class DriverServer(driver_pb2_grpc.DriverServiceServicer):
     def __init__(self):
-        self.store = DriverStore()
+        self.db = get_db()
+        self.routes = self.db.driver_routes
 
     async def RegisterRoute(self, request, context):
+        print(f"[driver] RegisterRoute request={request}")
         r = request.route
-        async with self.store.lock:
-            rid = r.id or f"route_{r.driver_id}_{len(self.store.routes)+1}"
-            seats_free = r.seats_free or r.seats_total
-            nr = driver_pb2.DriverRoute(
-                id=rid, driver_id=r.driver_id, dest_area=r.dest_area,
-                seats_total=r.seats_total, seats_free=seats_free, stations=list(r.stations)
-            )
-            self.store.routes[rid] = nr
-            return driver_pb2.RegisterRouteResponse(route=nr)
+        
+        # Convert stations to dict list for storage
+        stations_data = []
+        for s in r.stations:
+            stations_data.append({
+                "station_id": s.station_id,
+                "minutes_before_eta_match": s.minutes_before_eta_match
+            })
+            
+        route_doc = {
+            "driver_id": r.driver_id,
+            "dest_area": r.dest_area,
+            "seats_total": r.seats_total,
+            "seats_free": r.seats_free or r.seats_total,
+            "stations": stations_data
+        }
+        
+        res = self.routes.insert_one(route_doc)
+        rid = str(res.inserted_id)
+        
+        nr = driver_pb2.DriverRoute(
+            id=rid, driver_id=r.driver_id, dest_area=r.dest_area,
+            seats_total=r.seats_total, seats_free=route_doc["seats_free"], stations=list(r.stations)
+        )
+        return driver_pb2.RegisterRouteResponse(route=nr)
 
     async def UpdateSeats(self, request, context):
-        async with self.store.lock:
-            r = self.store.routes.get(request.route_id)
-            if not r:
-                return driver_pb2.UpdateSeatsResponse()
-            # rebuild with updated seats
-            r = driver_pb2.DriverRoute(
-                id=r.id, driver_id=r.driver_id, dest_area=r.dest_area,
-                seats_total=r.seats_total, seats_free=request.seats_free, stations=list(r.stations)
+        print(f"[driver] UpdateSeats request={request}")
+        from bson.objectid import ObjectId
+        try:
+            oid = ObjectId(request.route_id)
+            res = self.routes.find_one_and_update(
+                {"_id": oid},
+                {"$set": {"seats_free": request.seats_free}},
+                return_document=True
             )
-            self.store.routes[r.id] = r
-            return driver_pb2.UpdateSeatsResponse(route=r)
+        except:
+            res = None
+            
+        if not res:
+            return driver_pb2.UpdateSeatsResponse()
+            
+        # Reconstruct proto
+        stations_pb = [driver_pb2.RouteStation(station_id=s["station_id"], minutes_before_eta_match=s["minutes_before_eta_match"]) for s in res["stations"]]
+        
+        r = driver_pb2.DriverRoute(
+            id=str(res["_id"]),
+            driver_id=res["driver_id"],
+            dest_area=res["dest_area"],
+            seats_total=res["seats_total"],
+            seats_free=res["seats_free"],
+            stations=stations_pb
+        )
+        return driver_pb2.UpdateSeatsResponse(route=r)
 
     async def GetRoute(self, request, context):
-        async with self.store.lock:
-            r = self.store.routes.get(request.route_id)
+        print(f"[driver] GetRoute request={request}")
+        from bson.objectid import ObjectId
+        try:
+            oid = ObjectId(request.route_id)
+            res = self.routes.find_one({"_id": oid})
+        except:
+            res = None
+            
+        if not res:
+            return driver_pb2.GetRouteResponse()
+            
+        stations_pb = [driver_pb2.RouteStation(station_id=s["station_id"], minutes_before_eta_match=s["minutes_before_eta_match"]) for s in res["stations"]]
+        
+        r = driver_pb2.DriverRoute(
+            id=str(res["_id"]),
+            driver_id=res["driver_id"],
+            dest_area=res["dest_area"],
+            seats_total=res["seats_total"],
+            seats_free=res["seats_free"],
+            stations=stations_pb
+        )
         return driver_pb2.GetRouteResponse(route=r)
 
 def factory():

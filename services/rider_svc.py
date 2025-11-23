@@ -3,6 +3,7 @@ import time
 import grpc
 from lastmile.v1 import rider_pb2, rider_pb2_grpc, common_pb2
 from common.run import serve
+from common.db import get_db
 
 class RiderStore:
     def __init__(self):
@@ -12,47 +13,75 @@ class RiderStore:
 
 class RiderServer(rider_pb2_grpc.RiderServiceServicer):
     def __init__(self):
-        self.store = RiderStore()
+        self.db = get_db()
+        self.requests = self.db.rider_requests
 
     async def AddRequest(self, request, context):
+        print(f"[rider] AddRequest request={request}")
         r = request.request
-        rid = r.id or f"req_{int(time.time_ns())}"
+        # Use provided ID or generate one. Since client might send one, we can use it or ignore it.
+        # But for requests, maybe we just use what's given or generate.
+        # Let's stick to generating if empty, but here we can just insert.
+        
+        req_doc = {
+            "rider_id": r.rider_id,
+            "station_id": r.station_id,
+            "eta_unix": r.eta_unix,
+            "dest_area": r.dest_area,
+            "status": r.status or "PENDING"
+        }
+        res = self.requests.insert_one(req_doc)
+        rid = str(res.inserted_id)
+        
         req = common_pb2.RiderRequest(
             id=rid, rider_id=r.rider_id, station_id=r.station_id,
             eta_unix=r.eta_unix, dest_area=r.dest_area,
-            status=(r.status or "PENDING"),
+            status=req_doc["status"],
         )
-        async with self.store.lock:
-            self.store.requests[rid] = req
-            self.store.by_station.setdefault(req.station_id, set()).add(rid)
         return rider_pb2.AddRequestResponse(request=req)
 
     async def ListPendingAtStation(self, request, context):
+        print(f"[rider] ListPendingAtStation request={request}")
         now = request.now_unix
         window = request.minutes_window
         lo, hi = now - window*60, now + window*60
 
+        query = {
+            "station_id": request.station_id,
+            "dest_area": request.dest_area,
+            "status": "PENDING",
+            "eta_unix": {"$gte": lo, "$lte": hi}
+        }
+        
         out = []
-        async with self.store.lock:
-            ids = self.store.by_station.get(request.station_id, set())
-            for _id in ids:
-                rr = self.store.requests[_id]
-                if rr.status == "PENDING" and rr.dest_area == request.dest_area and lo <= rr.eta_unix <= hi:
-                    out.append(rr)
-        out.sort(key=lambda r: r.eta_unix)
+        cursor = self.requests.find(query).sort("eta_unix", 1)
+        for doc in cursor:
+            out.append(common_pb2.RiderRequest(
+                id=str(doc["_id"]),
+                rider_id=doc["rider_id"],
+                station_id=doc["station_id"],
+                eta_unix=doc["eta_unix"],
+                dest_area=doc["dest_area"],
+                status=doc["status"]
+            ))
+            
         return rider_pb2.ListPendingAtStationResponse(requests=out)
 
     async def MarkAssigned(self, request, context):
+        print(f"[rider] MarkAssigned request={request}")
+        from bson.objectid import ObjectId
         n = 0
-        async with self.store.lock:
-            for rid in request.request_ids:
-                rr = self.store.requests.get(rid)
-                if rr and rr.status == "PENDING":
-                    self.store.requests[rid] = common_pb2.RiderRequest(
-                        id=rr.id, rider_id=rr.rider_id, station_id=rr.station_id,
-                        eta_unix=rr.eta_unix, dest_area=rr.dest_area, status="ASSIGNED"
-                    )
+        for rid in request.request_ids:
+            try:
+                oid = ObjectId(rid)
+                res = self.requests.update_one(
+                    {"_id": oid, "status": "PENDING"},
+                    {"$set": {"status": "ASSIGNED", "trip_id": request.trip_id}}
+                )
+                if res.modified_count > 0:
                     n += 1
+            except:
+                pass
         return rider_pb2.MarkAssignedResponse(updated=n)
 
 def factory():

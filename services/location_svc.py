@@ -63,6 +63,7 @@ class LocationServer(location_pb2_grpc.LocationServiceServicer):
 
     async def StreamDriverLocation(self, request_iterator, context):
         async for loc in request_iterator:
+            print(f"[location] StreamDriverLocation received loc={loc}")
             route = await self._get_route(loc.route_id)
             if not route or not route.stations:
                 # No registered stations — nothing to check

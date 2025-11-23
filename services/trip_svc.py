@@ -2,6 +2,7 @@ import asyncio
 import grpc
 from lastmile.v1 import trip_pb2, trip_pb2_grpc, common_pb2
 from common.run import serve
+from common.db import get_db
 
 class TripStore:
     def __init__(self):
@@ -11,30 +12,53 @@ class TripStore:
 
 class TripServer(trip_pb2_grpc.TripServiceServicer):
     def __init__(self):
-        self.store = TripStore()
+        self.db = get_db()
+        self.trips = self.db.trips
 
     async def CreateTrip(self, request, context):
-        async with self.store.lock:
-            self.store._seq += 1
-            tid = f"trip_{self.store._seq}"
-            t = common_pb2.Trip(
-                id=tid, driver_id=request.driver_id, rider_ids=list(request.rider_ids),
-                route_id=request.route_id, station_id=request.station_id, status="SCHEDULED"
-            )
-            self.store.trips[tid] = t
-            return trip_pb2.CreateTripResponse(trip=t)
+        print(f"[trip] CreateTrip request={request}")
+        
+        trip_doc = {
+            "driver_id": request.driver_id,
+            "rider_ids": list(request.rider_ids),
+            "route_id": request.route_id,
+            "station_id": request.station_id,
+            "status": "SCHEDULED"
+        }
+        res = self.trips.insert_one(trip_doc)
+        tid = str(res.inserted_id)
+        
+        t = common_pb2.Trip(
+            id=tid, driver_id=request.driver_id, rider_ids=list(request.rider_ids),
+            route_id=request.route_id, station_id=request.station_id, status="SCHEDULED"
+        )
+        return trip_pb2.CreateTripResponse(trip=t)
 
     async def UpdateTripStatus(self, request, context):
-        async with self.store.lock:
-            t = self.store.trips.get(request.trip_id)
-            if not t:
-                return trip_pb2.UpdateTripStatusResponse()
-            t = common_pb2.Trip(
-                id=t.id, driver_id=t.driver_id, rider_ids=list(t.rider_ids),
-                route_id=t.route_id, station_id=t.station_id, status=request.status
+        print(f"[trip] UpdateTripStatus request={request}")
+        from bson.objectid import ObjectId
+        try:
+            oid = ObjectId(request.trip_id)
+            res = self.trips.find_one_and_update(
+                {"_id": oid},
+                {"$set": {"status": request.status}},
+                return_document=True
             )
-            self.store.trips[t.id] = t
-            return trip_pb2.UpdateTripStatusResponse(trip=t)
+        except:
+            res = None
+            
+        if not res:
+            return trip_pb2.UpdateTripStatusResponse()
+            
+        t = common_pb2.Trip(
+            id=str(res["_id"]),
+            driver_id=res["driver_id"],
+            rider_ids=res["rider_ids"],
+            route_id=res["route_id"],
+            station_id=res["station_id"],
+            status=res["status"]
+        )
+        return trip_pb2.UpdateTripStatusResponse(trip=t)
 
 def factory():
     server = grpc.aio.server()

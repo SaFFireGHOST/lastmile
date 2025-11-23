@@ -28,6 +28,7 @@ class MatchingServer(matching_pb2_grpc.MatchingServiceServicer):
         self.notify = notification_pb2_grpc.NotificationServiceStub(self._notify_ch)
 
     async def TryMatch(self, request, context):
+        print(f"[matching] TryMatch request={request}")
         ro = await self.driver.GetRoute(driver_pb2.GetRouteRequest(route_id=request.route_id))
         route = ro.route
         if not route or route.seats_free <= 0 or not route.dest_area:
