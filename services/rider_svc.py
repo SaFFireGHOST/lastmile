@@ -2,7 +2,7 @@ import asyncio
 import time
 import grpc
 from lastmile.v1 import rider_pb2, rider_pb2_grpc, common_pb2
-from common.run import run_grpc  # Changed from 'serve' to 'run_grpc' to allow custom loop
+from common.run import run_grpc  
 from common.db import get_db
 
 class RiderStore:

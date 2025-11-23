@@ -44,12 +44,33 @@ class TripServer(trip_pb2_grpc.TripServiceServicer):
                 {"$set": {"status": request.status}},
                 return_document=True
             )
+            print(res)
         except:
             res = None
             
         if not res:
             return trip_pb2.UpdateTripStatusResponse()
             
+        # If status is COMPLETED, delete the associated route
+        if request.status == "COMPLETED":
+            route_id = res.get("route_id")
+            if route_id:
+                print(f"[trip] Deleting route {route_id} for completed trip {oid}")
+                # We need to access driver_routes collection. 
+                # Since we only initialized self.trips, let's get the db again or access it
+                self.db.driver_routes.delete_one({"_id": ObjectId(route_id)})
+            
+            # Also mark rider requests as COMPLETED
+            rider_ids = res.get("rider_ids", [])
+            if rider_ids:
+                print(f"[trip] Marking rider requests for riders {rider_ids} as COMPLETED")
+                # We assume one active request per rider for now, or we could filter by station/time if needed.
+                # But simply marking all non-completed requests for these riders as COMPLETED is a safe heuristic for this MVP.
+                self.db.rider_requests.update_many(
+                    {"rider_id": {"$in": rider_ids}, "status": {"$ne": "COMPLETED"}},
+                    {"$set": {"status": "COMPLETED"}}
+                )
+
         t = common_pb2.Trip(
             id=str(res["_id"]),
             driver_id=res["driver_id"],

@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { GeoMap } from '@/shared/ui/GeoMap';
-import { toast } from 'sonner'; // Assuming sonner is installed, if not we might need to remove or replace
+import { toast } from 'react-toastify';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
@@ -40,23 +40,42 @@ export const RiderDashboard = () => {
     const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
     const [simulateEnabled, setSimulateEnabled] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    // Placeholder for requests until backend supports fetching by rider
     const [requests, setRequests] = useState<any[]>([]);
+
+    // Fetch my requests
+    useEffect(() => {
+        const fetchRequests = async () => {
+            if (!user?.id) return;
+            try {
+                const response = await api.getRiderRequests(user.id);
+                const mapped = response.data.map((r: any) => ({
+                    ...r,
+                    etaAbsolute: new Date(r.etaUnix * 1000),
+                    updatedAt: new Date() // Backend doesn't send this yet
+                }));
+                setRequests(mapped);
+            } catch (error) {
+                console.error("Failed to fetch requests", error);
+            }
+        };
+        fetchRequests();
+        // Poll every 5s to keep status updated
+        const interval = setInterval(fetchRequests, 5000);
+        return () => clearInterval(interval);
+    }, [user?.id]);
 
     useEffect(() => {
         const fetchStations = async () => {
             try {
                 const response = await api.getStations();
-                // Assuming the API returns `nearby_areas` and we need to map it to `nearbyAreas`
                 const mappedStations = response.data.map((station: any) => ({
                     ...station,
                     nearbyAreas: station.nearbyAreas || []
                 }));
-                console.log(response.data);
                 setStations(mappedStations);
             } catch (error) {
                 console.error('Failed to fetch stations', error);
-                // toast.error('Failed to load stations');
+                toast.error('Failed to load stations');
             } finally {
                 setStationsLoading(false);
             }
@@ -95,6 +114,8 @@ export const RiderDashboard = () => {
         }
     }, [user, setValue]);
 
+    const activeRequest = requests.find(r => ['PENDING', 'ASSIGNED'].includes(r.status));
+
     const onSubmit = async (data: RiderFormData) => {
         setIsSubmitting(true);
         try {
@@ -105,9 +126,9 @@ export const RiderDashboard = () => {
                 eta_minutes: data.etaMinutes,
             });
 
-            // Add to local requests list for immediate feedback (since we don't have fetch API yet)
+            // Add to local requests list for immediate feedback
             const newRequest = {
-                id: response.data.id || 'REQ-' + Date.now(), // Fallback if ID not returned
+                id: response.data.id || 'REQ-' + Date.now(),
                 stationId: data.stationId,
                 destination: data.destination,
                 etaAbsolute: new Date(Date.now() + data.etaMinutes * 60000),
@@ -117,11 +138,9 @@ export const RiderDashboard = () => {
             setRequests(prev => [newRequest, ...prev]);
 
             toast.success('Ride request created successfully!');
-            // alert('Ride request created successfully!');
         } catch (error) {
             console.error(error);
-            // toast.error('Failed to create request');
-            alert('Failed to create request');
+            toast.error('Failed to create request');
         } finally {
             setIsSubmitting(false);
         }
@@ -185,7 +204,7 @@ export const RiderDashboard = () => {
                                 <Label htmlFor="stationId">Metro Station</Label>
                                 <Select
                                     onValueChange={(value) => setValue('stationId', value)}
-                                    disabled={stationsLoading}
+                                    disabled={stationsLoading || !!activeRequest}
                                 >
                                     <SelectTrigger id="stationId">
                                         <SelectValue placeholder="Select station" />
@@ -211,8 +230,8 @@ export const RiderDashboard = () => {
                                             <Badge
                                                 key={area}
                                                 variant="secondary"
-                                                className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
-                                                onClick={() => setValue('destination', area)}
+                                                className={`cursor-pointer hover:bg-primary hover:text-primary-foreground ${activeRequest ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                onClick={() => !activeRequest && setValue('destination', area)}
                                             >
                                                 {area}
                                             </Badge>
@@ -227,6 +246,7 @@ export const RiderDashboard = () => {
                                     id="destination"
                                     placeholder="e.g., Indiranagar"
                                     {...register('destination')}
+                                    disabled={!!activeRequest}
                                 />
                                 {errors.destination && (
                                     <p className="text-sm text-red-500">{errors.destination.message}</p>
@@ -245,15 +265,16 @@ export const RiderDashboard = () => {
                                     type="number"
                                     min="0"
                                     {...register('etaMinutes', { valueAsNumber: true })}
+                                    disabled={!!activeRequest}
                                 />
                                 {errors.etaMinutes && (
                                     <p className="text-sm text-red-500">{errors.etaMinutes.message}</p>
                                 )}
                             </div>
 
-                            <Button type="submit" className="w-full" disabled={isSubmitting}>
+                            <Button type="submit" className="w-full" disabled={isSubmitting || !!activeRequest}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Request Ride
+                                {activeRequest ? 'Ride in Progress' : 'Request Ride'}
                             </Button>
                         </form>
                     </CardContent>
@@ -270,12 +291,6 @@ export const RiderDashboard = () => {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="h-[400px] p-0">
-                        {/* Pass the station object with location to GeoMap. 
-                Note: GeoMap expects 'nearbyAreas' but API returns 'nearby_areas'. 
-                We might need to map it or GeoMap handles it. 
-                Let's check GeoMap props if possible, but for now I'll pass it as is 
-                and hope it works or I might need to adapt the object.
-            */}
                         <GeoMap station={selectedStation ? {
                             id: selectedStation.id,
                             name: selectedStation.name,

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,11 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { useNotificationsStore } from '@/stores/useNotificationsStore';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
+import { toast } from 'react-toastify';
 
 export function Notifications() {
     const { user } = useAuth();
     const { notifications, fetchNotifications, markAsRead, markAllAsRead, clearAll } = useNotificationsStore();
     const unreadCount = notifications.filter((n) => !n.read).length;
+    const lastSeenIdRef = useRef<string | null>(null);
 
     // Poll for notifications
     useEffect(() => {
@@ -29,6 +31,24 @@ export function Notifications() {
 
         return () => clearInterval(interval);
     }, [user?.id, fetchNotifications]);
+
+    // Toast on new notification
+    useEffect(() => {
+        if (notifications.length === 0) return;
+        const newest = notifications[0];
+
+        if (lastSeenIdRef.current === null) {
+            lastSeenIdRef.current = newest.id;
+            return;
+        }
+
+        if (newest.id !== lastSeenIdRef.current) {
+            if (!newest.read) {
+                toast.info(newest.message);
+            }
+            lastSeenIdRef.current = newest.id;
+        }
+    }, [notifications]);
 
     return (
         <Popover>

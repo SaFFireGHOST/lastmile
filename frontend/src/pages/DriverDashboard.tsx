@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useDriverSimulator } from '@/hooks/useDriverSimulator';
 import { GeoMap } from '@/shared/ui/GeoMap';
-import { toast } from 'sonner';
+import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
 import { Notifications } from '@/components/Notifications';
@@ -42,7 +42,40 @@ export const DriverDashboard = () => {
     const [stations, setStations] = useState<Station[]>([]);
     const [selectedStations, setSelectedStations] = useState<string[]>([]);
     const [existingRoute, setExistingRoute] = useState<DriverFormData | null>(null);
+    const [activeTripId, setActiveTripId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        const fetchInitialData = async () => {
+            if (!user?.id) return;
+            try {
+                // Fetch active route
+                const routeRes = await api.getActiveRoute(user.id);
+                if (routeRes.data) {
+                    const r = routeRes.data;
+                    setExistingRoute({
+                        driverId: r.driver_id,
+                        routeId: r.id,
+                        destinationArea: r.dest_area,
+                        seatsTotal: r.seats_total,
+                        seatsFree: r.seats_free,
+                        stationIds: r.stations.map((s: any) => s.station_id),
+                        minutesBeforeEtaMatch: r.stations[0]?.minutes_before_eta_match || 10
+                    });
+                    setSelectedStations(r.stations.map((s: any) => s.station_id));
+                }
+
+                // Fetch active trip
+                const tripRes = await api.getActiveTrip(user.id);
+                if (tripRes.data) {
+                    setActiveTripId(tripRes.data.id);
+                }
+            } catch (error) {
+                console.error("Failed to fetch initial data", error);
+            }
+        };
+        fetchInitialData();
+    }, [user?.id]);
 
     useEffect(() => {
         const fetchStations = async () => {
@@ -140,14 +173,31 @@ export const DriverDashboard = () => {
                 ...data,
                 routeId: registeredRouteId
             });
-            // toast.success('Route registered successfully!');
-            alert('Route registered successfully!');
+            toast.success('Route registered successfully!');
+            // alert('Route registered successfully!');
         } catch (error) {
             console.error(error);
-            // toast.error('Failed to save route');
-            alert('Failed to save route');
+            toast.error('Failed to save route');
+            // alert('Failed to save route');
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleCompleteTrip = async () => {
+        if (!activeTripId) return;
+        try {
+            await api.completeTrip(activeTripId);
+            toast.success("Trip completed successfully!");
+            setExistingRoute(null);
+            setActiveTripId(null);
+            setSelectedStations([]);
+            // Reset form
+            setValue('stationIds', []);
+            setValue('destinationArea', '');
+        } catch (error) {
+            console.error("Failed to complete trip", error);
+            toast.error("Failed to complete trip");
         }
     };
 
@@ -182,113 +232,120 @@ export const DriverDashboard = () => {
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            {existingRoute && (
+                                <div className="bg-yellow-50 p-3 rounded-md border border-yellow-200 mb-4 text-sm text-yellow-800">
+                                    You already have an active route. Complete your current trip or route to create a new one.
+                                </div>
+                            )}
+                            <fieldset disabled={!!existingRoute} className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="driverId">Driver ID</Label>
+                                        <Input
+                                            id="driverId"
+                                            {...register('driverId')}
+                                            readOnly
+                                            className="bg-gray-100"
+                                        />
+                                        {errors.driverId && (
+                                            <p className="text-sm text-red-500">{errors.driverId.message}</p>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="routeId">Route ID (Optional)</Label>
+                                        <Input
+                                            id="routeId"
+                                            placeholder="e.g., RT-123"
+                                            {...register('routeId')}
+                                        />
+                                    </div>
+                                </div>
+
                                 <div className="space-y-2">
-                                    <Label htmlFor="driverId">Driver ID</Label>
+                                    <Label htmlFor="destinationArea">Destination Area</Label>
                                     <Input
-                                        id="driverId"
-                                        {...register('driverId')}
-                                        readOnly
-                                        className="bg-gray-100"
+                                        id="destinationArea"
+                                        placeholder="e.g., Indiranagar"
+                                        {...register('destinationArea')}
                                     />
-                                    {errors.driverId && (
-                                        <p className="text-sm text-red-500">{errors.driverId.message}</p>
+                                    {errors.destinationArea && (
+                                        <p className="text-sm text-red-500">{errors.destinationArea.message}</p>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="seatsTotal">Total Seats</Label>
+                                        <Input
+                                            id="seatsTotal"
+                                            type="number"
+                                            min="1"
+                                            {...register('seatsTotal', { valueAsNumber: true })}
+                                        />
+                                        {errors.seatsTotal && (
+                                            <p className="text-sm text-red-500">{errors.seatsTotal.message}</p>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="seatsFree">Seats Available</Label>
+                                        <Input
+                                            id="seatsFree"
+                                            type="number"
+                                            min="0"
+                                            max={watchedSeatsTotal}
+                                            {...register('seatsFree', { valueAsNumber: true })}
+                                        />
+                                        {errors.seatsFree && (
+                                            <p className="text-sm text-red-500">{errors.seatsFree.message}</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>Stations (Select multiple)</Label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {stations.map((station) => (
+                                            <Badge
+                                                key={station.id}
+                                                variant={selectedStations.includes(station.id) ? 'default' : 'outline'}
+                                                className={`cursor-pointer ${selectedStations.includes(station.id) ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`}
+                                                onClick={() => !existingRoute && toggleStation(station.id)}
+                                            >
+                                                {station.name}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                    {errors.stationIds && (
+                                        <p className="text-sm text-red-500">{errors.stationIds.message}</p>
                                     )}
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="routeId">Route ID (Optional)</Label>
+                                    <Label htmlFor="minutesBeforeEtaMatch">
+                                        Minutes Before ETA to Match
+                                        <span className="text-muted-foreground text-sm ml-2">
+                                            (How early to start matching?)
+                                        </span>
+                                    </Label>
                                     <Input
-                                        id="routeId"
-                                        placeholder="e.g., RT-123"
-                                        {...register('routeId')}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="destinationArea">Destination Area</Label>
-                                <Input
-                                    id="destinationArea"
-                                    placeholder="e.g., Indiranagar"
-                                    {...register('destinationArea')}
-                                />
-                                {errors.destinationArea && (
-                                    <p className="text-sm text-red-500">{errors.destinationArea.message}</p>
-                                )}
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="seatsTotal">Total Seats</Label>
-                                    <Input
-                                        id="seatsTotal"
-                                        type="number"
-                                        min="1"
-                                        {...register('seatsTotal', { valueAsNumber: true })}
-                                    />
-                                    {errors.seatsTotal && (
-                                        <p className="text-sm text-red-500">{errors.seatsTotal.message}</p>
-                                    )}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="seatsFree">Seats Available</Label>
-                                    <Input
-                                        id="seatsFree"
+                                        id="minutesBeforeEtaMatch"
                                         type="number"
                                         min="0"
-                                        max={watchedSeatsTotal}
-                                        {...register('seatsFree', { valueAsNumber: true })}
+                                        {...register('minutesBeforeEtaMatch', { valueAsNumber: true })}
                                     />
-                                    {errors.seatsFree && (
-                                        <p className="text-sm text-red-500">{errors.seatsFree.message}</p>
+                                    {errors.minutesBeforeEtaMatch && (
+                                        <p className="text-sm text-red-500">
+                                            {errors.minutesBeforeEtaMatch.message}
+                                        </p>
                                     )}
                                 </div>
-                            </div>
 
-                            <div className="space-y-2">
-                                <Label>Stations (Select multiple)</Label>
-                                <div className="flex flex-wrap gap-2">
-                                    {stations.map((station) => (
-                                        <Badge
-                                            key={station.id}
-                                            variant={selectedStations.includes(station.id) ? 'default' : 'outline'}
-                                            className={`cursor-pointer ${selectedStations.includes(station.id) ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`}
-                                            onClick={() => toggleStation(station.id)}
-                                        >
-                                            {station.name}
-                                        </Badge>
-                                    ))}
-                                </div>
-                                {errors.stationIds && (
-                                    <p className="text-sm text-red-500">{errors.stationIds.message}</p>
-                                )}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="minutesBeforeEtaMatch">
-                                    Minutes Before ETA to Match
-                                    <span className="text-muted-foreground text-sm ml-2">
-                                        (How early to start matching?)
-                                    </span>
-                                </Label>
-                                <Input
-                                    id="minutesBeforeEtaMatch"
-                                    type="number"
-                                    min="0"
-                                    {...register('minutesBeforeEtaMatch', { valueAsNumber: true })}
-                                />
-                                {errors.minutesBeforeEtaMatch && (
-                                    <p className="text-sm text-red-500">
-                                        {errors.minutesBeforeEtaMatch.message}
-                                    </p>
-                                )}
-                            </div>
-
-                            <Button type="submit" className="w-full" disabled={isSubmitting}>
-                                {isSubmitting ? 'Saving...' : 'Save Route'}
-                            </Button>
+                                <Button type="submit" className="w-full" disabled={isSubmitting || !!existingRoute}>
+                                    {isSubmitting ? 'Saving...' : 'Save Route'}
+                                </Button>
+                            </fieldset>
                         </form>
                     </CardContent>
                 </Card>
@@ -339,6 +396,24 @@ export const DriverDashboard = () => {
                                     })}
                                 </div>
                             </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Active Trip Actions */}
+                {activeTripId && (
+                    <Card className="rounded-2xl bg-green-50 border-green-200">
+                        <CardHeader>
+                            <CardTitle>Active Trip</CardTitle>
+                            <CardDescription>You have an ongoing trip.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Button
+                                onClick={handleCompleteTrip}
+                                className="w-full bg-green-600 hover:bg-green-700 text-white"
+                            >
+                                Complete Trip
+                            </Button>
                         </CardContent>
                     </Card>
                 )}

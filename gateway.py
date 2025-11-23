@@ -14,7 +14,7 @@ from lastmile.v1 import (
     rider_pb2, rider_pb2_grpc,
     driver_pb2, driver_pb2_grpc,
     location_pb2, location_pb2_grpc,
-    common_pb2
+    common_pb2,trip_pb2,trip_pb2_grpc
 )
 
 app = Flask(__name__)
@@ -172,6 +172,30 @@ def get_rider_requests():
     except grpc.RpcError as e:
         return jsonify({"error": e.details()}), 500
 
+@app.route('/api/rider/my-requests', methods=['GET'])
+def get_my_rider_requests():
+    """Fetch all requests for a specific rider directly from DB"""
+    rider_id = request.args.get('rider_id')
+    if not rider_id:
+        return jsonify({"error": "rider_id required"}), 400
+        
+    db = get_db()
+    # Get last 20 requests, newest first
+    requests = list(db.rider_requests.find({"rider_id": rider_id}).sort("eta_unix", -1).limit(20))
+    
+    # Convert ObjectId to string and format for frontend
+    out = []
+    for r in requests:
+        out.append({
+            "id": str(r["_id"]),
+            "stationId": r["station_id"],
+            "destination": r["dest_area"],
+            "etaUnix": r["eta_unix"],
+            "status": r["status"]
+        })
+        
+    return jsonify(out), 200
+
 
 # 4. Driver Operations
 @app.route('/api/driver/route', methods=['POST'])
@@ -231,6 +255,70 @@ def update_driver_location():
         return jsonify({"status": "updated"}), 200
     except grpc.RpcError as e:
         return jsonify({"error": e.details()}), 500
+
+@app.route('/api/driver/active-route', methods=['GET'])
+def get_active_driver_route():
+    """Fetch the active route for a driver directly from DB"""
+    driver_id = request.args.get('driver_id')
+    if not driver_id:
+        return jsonify({"error": "driver_id required"}), 400
+        
+    db = get_db()
+    # Find route where driver_id matches
+    route = db.driver_routes.find_one({"driver_id": driver_id})
+    
+    if route:
+        route['id'] = str(route.pop('_id'))
+        # Convert stations list if needed, but frontend expects what we stored
+        return jsonify(route), 200
+    else:
+        return jsonify(None), 200 # No active route
+
+@app.route('/api/trip/complete', methods=['POST'])
+def complete_trip():
+    """Completes a trip and cleans up the route"""
+    data = request.json
+    trip_id = data.get('trip_id')
+    
+    if not trip_id:
+        return jsonify({"error": "trip_id required"}), 400
+        
+    # We can call the trip service via gRPC to update status
+    # The trip service will handle route deletion as per our plan
+    
+    # First, let's get the stub
+    # We need a trip stub function
+    channel = grpc.insecure_channel(os.getenv("TRIP_ADDR", "localhost:50055"))
+    stub = trip_pb2_grpc.TripServiceStub(channel)
+    
+    try:
+        resp = stub.UpdateTripStatus(trip_pb2.UpdateTripStatusRequest(
+            trip_id=trip_id,
+            status="COMPLETED"
+        ))
+        return jsonify(MessageToDict(resp.trip)), 200
+    except grpc.RpcError as e:
+        return jsonify({"error": e.details()}), 500
+
+@app.route('/api/driver/active-trip', methods=['GET'])
+def get_active_driver_trip():
+    """Fetch the active trip for a driver"""
+    driver_id = request.args.get('driver_id')
+    if not driver_id:
+        return jsonify({"error": "driver_id required"}), 400
+        
+    db = get_db()
+    # Find trip where driver_id matches and status is NOT completed or cancelled
+    trip = db.trips.find_one({
+        "driver_id": driver_id,
+        "status": {"$nin": ["COMPLETED", "CANCELLED"]}
+    })
+    
+    if trip:
+        trip['id'] = str(trip.pop('_id'))
+        return jsonify(trip), 200
+    else:
+        return jsonify(None), 200
 
 
 # ... existing imports ...

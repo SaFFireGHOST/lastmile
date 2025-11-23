@@ -13,7 +13,7 @@ from common.env import addr
 from common.run import serve
 
 # Tunables (no speed/ETA used)
-GEOFENCE_METERS  = 200.0   # trigger radius around a station
+GEOFENCE_METERS  = 400.0   # trigger radius around a station
 DEBOUNCE_SECONDS = 60      # suppress repeated triggers per (driver, station)
 
 class LocationServer(location_pb2_grpc.LocationServiceServicer):

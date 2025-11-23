@@ -5,8 +5,10 @@ import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { RiderDashboard } from './pages/RiderDashboard';
 import { DriverDashboard } from './pages/DriverDashboard';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
-const ProtectedRoute = ({ children, allowedRole }: { children: JSX.Element, allowedRole?: string }) => {
+const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, allowedRole?: string }) => {
   const { user, isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
@@ -56,6 +58,7 @@ function App() {
           <Route path="/" element={<HomeRedirect />} />
         </Routes>
       </Router>
+      <ToastContainer position="top-right" autoClose={5000} />
     </AuthProvider>
   );
 }
