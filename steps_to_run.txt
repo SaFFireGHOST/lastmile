@@ -1,25 +1,62 @@
-do in all terminals :  source .venv/bin/activate
-do in all terminals : export PYTHONPATH=.:$PYTHONPATH
+# Steps to Run on Kubernetes
 
-# term 1
-python services/user_svc.py
-# term 2
-python services/station_svc.py
-# term 3
-python services/driver_svc.py
-# term 4
-python services/rider_svc.py
-# term 5
-python services/trip_svc.py
-# term 6
-python services/notification_svc.py
-# term 7
-python services/matching_svc.py
-# term 8                       
-python services/location_svc.py
+## Prerequisites
+- Docker
+- Kubernetes Cluster (Minikube, Kind, or Docker Desktop)
+- `kubectl` configured
 
-#term 9 
-python scripts/client.py
-#term 10
-python  scripts/driver_ping.py
+## 1. Build Docker Images
+Run the following commands from the `lastmile` directory:
 
+```bash
+docker build -t lastmile-backend:latest -f Dockerfile.backend .
+docker build -t lastmile-frontend:latest -f frontend/Dockerfile frontend/
+```
+
+## 2. Deploy to Kubernetes
+Apply the manifests:
+
+```bash
+kubectl apply -f k8s/
+```
+
+Wait for all pods to be ready:
+```bash
+kubectl get pods -w
+```
+
+## 3. Access the Application
+- **Frontend**: http://localhost:30080 (NodePort)
+- **Gateway**: http://localhost:5000 (via Service or Port Forward)
+
+To access the Gateway locally if not using NodePort/LoadBalancer:
+```bash
+kubectl port-forward svc/gateway 5000:5000
+```
+
+## 4. Demonstrate Scaling (HPA)
+1. Open a terminal and watch the HPA:
+   ```bash
+   kubectl get hpa -w
+   ```
+
+2. Open another terminal and port-forward the matching service:
+   ```bash
+   kubectl port-forward svc/matching-svc 50057:50057
+   ```
+
+3. Run the load generator script:
+   ```bash
+   python3 scripts/load_gen.py
+   ```
+
+4. Observe the `REPLICAS` count in the HPA terminal increase from 1 to 5 (max).
+
+## 5. Demonstrate Fault Tolerance
+1. While the application is running, delete a matching service pod:
+   ```bash
+   kubectl delete pod -l app=matching-svc
+   ```
+
+2. Kubernetes will automatically recreate the pod.
+3. The load generator (and application) should continue to work with minimal interruption (retries might be needed for in-flight requests, but the system heals).
