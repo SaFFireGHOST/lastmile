@@ -18,8 +18,11 @@ dist/
 downloads/
 eggs/
 .eggs/
+<<<<<<< HEAD
 lib/
 !frontend/src/lib/
+=======
+>>>>>>> df70eedd5ee60f1b7e37f51e412f644bb03f064a
 lib64/
 parts/
 sdist/
