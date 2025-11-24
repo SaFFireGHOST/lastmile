@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,6 +14,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
 import { Notifications } from '@/components/Notifications';
+import { useNotificationsStore } from '@/stores/useNotificationsStore';
 
 const driverSchema = z.object({
     driverId: z.string().min(1, 'Driver ID is required'),
@@ -45,37 +46,59 @@ export const DriverDashboard = () => {
     const [activeTripId, setActiveTripId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    useEffect(() => {
-        const fetchInitialData = async () => {
-            if (!user?.id) return;
-            try {
-                // Fetch active route
-                const routeRes = await api.getActiveRoute(user.id);
-                if (routeRes.data) {
-                    const r = routeRes.data;
-                    setExistingRoute({
-                        driverId: r.driver_id,
-                        routeId: r.id,
-                        destinationArea: r.dest_area,
-                        seatsTotal: r.seats_total,
-                        seatsFree: r.seats_free,
-                        stationIds: r.stations.map((s: any) => s.station_id),
-                        minutesBeforeEtaMatch: r.stations[0]?.minutes_before_eta_match || 10
-                    });
-                    setSelectedStations(r.stations.map((s: any) => s.station_id));
-                }
+    const { notifications } = useNotificationsStore();
+    const lastNotificationIdRef = useRef<string | null>(null);
 
-                // Fetch active trip
-                const tripRes = await api.getActiveTrip(user.id);
-                if (tripRes.data) {
-                    setActiveTripId(tripRes.data.id);
-                }
-            } catch (error) {
-                console.error("Failed to fetch initial data", error);
+    const refreshDashboardData = async () => {
+        if (!user?.id) return;
+        try {
+            // Fetch active route
+            const routeRes = await api.getActiveRoute(user.id);
+            if (routeRes.data) {
+                const r = routeRes.data;
+                setExistingRoute({
+                    driverId: r.driver_id,
+                    routeId: r.id,
+                    destinationArea: r.dest_area,
+                    seatsTotal: r.seats_total,
+                    seatsFree: r.seats_free,
+                    stationIds: r.stations.map((s: any) => s.station_id),
+                    minutesBeforeEtaMatch: r.stations[0]?.minutes_before_eta_match || 10
+                });
+                setSelectedStations(r.stations.map((s: any) => s.station_id));
+            } else {
+                // If no active route, clear it (important for when route is deleted/completed)
+                setExistingRoute(null);
             }
-        };
-        fetchInitialData();
+
+            // Fetch active trip
+            const tripRes = await api.getActiveTrip(user.id);
+            if (tripRes.data) {
+                setActiveTripId(tripRes.data.id);
+            } else {
+                setActiveTripId(null);
+            }
+        } catch (error) {
+            console.error("Failed to fetch initial data", error);
+        }
+    };
+
+    // Initial fetch
+    useEffect(() => {
+        refreshDashboardData();
     }, [user?.id]);
+
+    // Refresh when notifications change (e.g. new match)
+    useEffect(() => {
+        if (notifications.length === 0) return;
+        const newest = notifications[0];
+
+        // Only refresh if we have a new notification
+        if (newest.id !== lastNotificationIdRef.current) {
+            lastNotificationIdRef.current = newest.id;
+            refreshDashboardData();
+        }
+    }, [notifications]);
 
     useEffect(() => {
         const fetchStations = async () => {

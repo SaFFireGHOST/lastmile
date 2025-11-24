@@ -1,7 +1,8 @@
 import asyncio
 import grpc
-from lastmile.v1 import trip_pb2, trip_pb2_grpc, common_pb2
+from lastmile.v1 import trip_pb2, trip_pb2_grpc, common_pb2, notification_pb2, notification_pb2_grpc
 from common.run import serve
+from common.env import addr
 from common.db import get_db
 
 class TripStore:
@@ -14,6 +15,11 @@ class TripServer(trip_pb2_grpc.TripServiceServicer):
     def __init__(self):
         self.db = get_db()
         self.trips = self.db.trips
+        
+        # Connect to Notification Service
+        self._notify_addr = addr("NOTIFY_ADDR", "localhost:50056")
+        self._notify_ch = grpc.aio.insecure_channel(self._notify_addr)
+        self.notify = notification_pb2_grpc.NotificationServiceStub(self._notify_ch)
 
     async def CreateTrip(self, request, context):
         print(f"[trip] CreateTrip request={request}")
@@ -70,6 +76,19 @@ class TripServer(trip_pb2_grpc.TripServiceServicer):
                     {"rider_id": {"$in": rider_ids}, "status": {"$ne": "COMPLETED"}},
                     {"$set": {"status": "COMPLETED"}}
                 )
+                
+                # Send notification to riders
+                try:
+                    targets = [notification_pb2.PushTarget(user_id=rid, channel="log") for rid in rider_ids]
+                    await self.notify.Push(notification_pb2.PushRequest(
+                        targets=targets, 
+                        title="Trip Completed", 
+                        body="You have arrived at your destination. Thank you for riding with LastMile!",
+                        data_json=f'{{"tripId":"{request.trip_id}", "status":"COMPLETED"}}'
+                    ))
+                    print(f"[trip] Sent completion notification to {len(rider_ids)} riders")
+                except Exception as e:
+                    print(f"[trip] Failed to send notification: {e}")
 
         t = common_pb2.Trip(
             id=str(res["_id"]),

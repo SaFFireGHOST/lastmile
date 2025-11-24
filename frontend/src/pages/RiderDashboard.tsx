@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -16,6 +16,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
 import { Notifications } from '@/components/Notifications';
+import { useNotificationsStore } from '@/stores/useNotificationsStore';
 
 const riderSchema = z.object({
     riderId: z.string().min(1, 'Rider ID is required'),
@@ -43,26 +44,40 @@ export const RiderDashboard = () => {
     const [requests, setRequests] = useState<any[]>([]);
 
     // Fetch my requests
+    const { notifications } = useNotificationsStore();
+    const lastNotificationIdRef = useRef<string | null>(null);
+
+    const refreshRiderData = async () => {
+        if (!user?.id) return;
+        try {
+            const response = await api.getRiderRequests(user.id);
+            const mapped = response.data.map((r: any) => ({
+                ...r,
+                etaAbsolute: new Date(r.etaUnix * 1000),
+                updatedAt: new Date() // Backend doesn't send this yet
+            }));
+            setRequests(mapped);
+        } catch (error) {
+            console.error("Failed to fetch requests", error);
+        }
+    };
+
+    // Initial fetch
     useEffect(() => {
-        const fetchRequests = async () => {
-            if (!user?.id) return;
-            try {
-                const response = await api.getRiderRequests(user.id);
-                const mapped = response.data.map((r: any) => ({
-                    ...r,
-                    etaAbsolute: new Date(r.etaUnix * 1000),
-                    updatedAt: new Date() // Backend doesn't send this yet
-                }));
-                setRequests(mapped);
-            } catch (error) {
-                console.error("Failed to fetch requests", error);
-            }
-        };
-        fetchRequests();
-        // Poll every 5s to keep status updated
-        const interval = setInterval(fetchRequests, 5000);
-        return () => clearInterval(interval);
+        refreshRiderData();
     }, [user?.id]);
+
+    // Refresh when notifications change (e.g. match assigned)
+    useEffect(() => {
+        if (notifications.length === 0) return;
+        const newest = notifications[0];
+
+        // Only refresh if we have a new notification
+        if (newest.id !== lastNotificationIdRef.current) {
+            lastNotificationIdRef.current = newest.id;
+            refreshRiderData();
+        }
+    }, [notifications]);
 
     useEffect(() => {
         const fetchStations = async () => {
