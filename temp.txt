@@ -1,0 +1,25 @@
+do in all terminals :  source .venv/bin/activate
+do in all terminals : export PYTHONPATH=.:$PYTHONPATH
+
+# term 1
+python services/user_svc.py
+# term 2
+python services/station_svc.py
+# term 3
+python services/driver_svc.py
+# term 4
+python services/rider_svc.py
+# term 5
+python services/trip_svc.py
+# term 6
+python services/notification_svc.py
+# term 7
+python services/matching_svc.py
+# term 8                       
+python services/location_svc.py
+
+#term 9 
+python scripts/client.py
+#term 10
+python  scripts/driver_ping.py
+

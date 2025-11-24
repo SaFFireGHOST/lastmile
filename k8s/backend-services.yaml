@@ -267,6 +267,12 @@ spec:
         imagePullPolicy: IfNotPresent
         command: ["python", "services/location_svc.py"]
         env:
+        - name: MATCH_ADDR
+          value: "matching-svc:50057"
+        - name: STATION_ADDR
+          value: "station-svc:50052"
+        - name: DRIVER_ADDR
+          value: "driver-svc:50053"
         - name: MONGO_URI
           value: "mongodb://mongo:27017"
 ---

@@ -11,6 +11,8 @@ dependencies = [
   "grpcio-tools>=1.66.0",
   "protobuf>=5.27.0",
   "pymongo>=4.0",
+  "Flask>=3.0",
+  "flask-cors>=5.0",
 ]
 
 [tool.setuptools]

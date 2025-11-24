@@ -13,6 +13,13 @@ docker build -t lastmile-backend:latest -f Dockerfile.backend .
 docker build -t lastmile-frontend:latest -f frontend/Dockerfile frontend/
 ```
 
+> [!IMPORTANT]
+> **If using Minikube**, you must load the images into the Minikube cluster:
+> ```bash
+> minikube image load lastmile-backend:latest lastmile-frontend:latest
+> ```
+> Alternatively, you can point your shell to Minikube's Docker daemon before building: `eval $(minikube docker-env)`
+
 ## 2. Deploy to Kubernetes
 Apply the manifests:
 
@@ -20,14 +27,28 @@ Apply the manifests:
 kubectl apply -f k8s/
 ```
 
-Wait for all pods to be ready:
-```bash
 kubectl get pods -w
 ```
 
+## 2.1 Initialize Data (Add Stations)
+To add stations to the database, you need to access the MongoDB running in the cluster.
+
+1. Open a new terminal and port-forward MongoDB:
+   ```bash
+   kubectl port-forward svc/mongo 27017:27017
+   ```
+
+2. Run the initialization script locally:
+   ```bash
+   python3 scripts/init_db.py
+   ```
+   This will populate the database with station data.
+
 ## 3. Access the Application
-- **Frontend**: http://localhost:30080 (NodePort)
-- **Gateway**: http://localhost:5000 (via Service or Port Forward)
+- **Frontend**: http://192.168.49.2:30080 (Minikube IP)
+  > Or run: `minikube service frontend` to open it automatically.
+
+- **Gateway**: http://localhost:5000 (via Port Forward)
 
 To access the Gateway locally if not using NodePort/LoadBalancer:
 ```bash
