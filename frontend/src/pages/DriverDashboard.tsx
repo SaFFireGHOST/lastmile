@@ -201,6 +201,22 @@ export const DriverDashboard = () => {
         }
     };
 
+    const handleDeleteRoute = async () => {
+        if (!existingRoute?.routeId) return;
+        try {
+            await api.deleteRoute(existingRoute.routeId);
+            toast.success("Destination reached! Route deleted.");
+            setExistingRoute(null);
+            setSelectedStations([]);
+            // Reset form
+            setValue('stationIds', []);
+            setValue('destinationArea', '');
+        } catch (error) {
+            console.error("Failed to delete route", error);
+            toast.error("Failed to delete route");
+        }
+    };
+
     const toggleStation = (stationId: string) => {
         const newStations = selectedStations.includes(stationId)
             ? selectedStations.filter((id) => id !== stationId)
@@ -396,6 +412,15 @@ export const DriverDashboard = () => {
                                     })}
                                 </div>
                             </div>
+                            {!activeTripId && (
+                                <Button
+                                    onClick={handleDeleteRoute}
+                                    variant="outline"
+                                    className="w-full mt-2 border-blue-300 text-blue-700 hover:bg-blue-100"
+                                >
+                                    Destination Reached
+                                </Button>
+                            )}
                         </CardContent>
                     </Card>
                 )}

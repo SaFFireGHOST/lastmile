@@ -24,4 +24,5 @@ export const api = {
   markAllNotificationsRead: (userId: string) => client.put('/notifications/read-all', { user_id: userId }),
   clearNotifications: (userId: string) => client.delete(`/notifications/clear?user_id=${userId}`),
   getRiderRequests: (riderId: string) => client.get(`/rider/my-requests?rider_id=${riderId}`),
+  deleteRoute: (routeId: string) => client.delete(`/driver/route/${routeId}`),
 };

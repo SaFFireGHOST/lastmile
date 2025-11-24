@@ -205,6 +205,7 @@ def create_driver_route():
     driver_id = data.get('driver_id')
     dest_area = data.get('dest_area')
     seats_total = int(data.get('seats_total', 3))
+    seats_free= int(data.get('seats_free', 3))
     
     # Frontend sends list of station IDs ["MG_ROAD", "INDIRANAGAR"]
     station_ids = data.get('stations', []) 
@@ -218,7 +219,7 @@ def create_driver_route():
         driver_id=driver_id,
         dest_area=dest_area,
         seats_total=seats_total,
-        seats_free=seats_total,
+        seats_free=seats_free,
         stations=route_stations
     )
     
@@ -273,6 +274,16 @@ def get_active_driver_route():
         return jsonify(route), 200
     else:
         return jsonify(None), 200 # No active route
+
+@app.route('/api/driver/route/<route_id>', methods=['DELETE'])
+def delete_driver_route(route_id):
+    """Deletes a driver route"""
+    stub = get_driver_stub()
+    try:
+        resp = stub.DeleteRoute(driver_pb2.DeleteRouteRequest(route_id=route_id))
+        return jsonify({"status": "deleted", "route_id": resp.route_id}), 200
+    except grpc.RpcError as e:
+        return jsonify({"error": e.details()}), 500
 
 @app.route('/api/trip/complete', methods=['POST'])
 def complete_trip():

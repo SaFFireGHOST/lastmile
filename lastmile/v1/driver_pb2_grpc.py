@@ -49,6 +49,11 @@ class DriverServiceStub(object):
                 request_serializer=lastmile_dot_v1_dot_driver__pb2.GetRouteRequest.SerializeToString,
                 response_deserializer=lastmile_dot_v1_dot_driver__pb2.GetRouteResponse.FromString,
                 _registered_method=True)
+        self.DeleteRoute = channel.unary_unary(
+                '/lastmile.v1.DriverService/DeleteRoute',
+                request_serializer=lastmile_dot_v1_dot_driver__pb2.DeleteRouteRequest.SerializeToString,
+                response_deserializer=lastmile_dot_v1_dot_driver__pb2.DeleteRouteResponse.FromString,
+                _registered_method=True)
 
 
 class DriverServiceServicer(object):
@@ -72,6 +77,12 @@ class DriverServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def DeleteRoute(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_DriverServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -89,6 +100,11 @@ def add_DriverServiceServicer_to_server(servicer, server):
                     servicer.GetRoute,
                     request_deserializer=lastmile_dot_v1_dot_driver__pb2.GetRouteRequest.FromString,
                     response_serializer=lastmile_dot_v1_dot_driver__pb2.GetRouteResponse.SerializeToString,
+            ),
+            'DeleteRoute': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteRoute,
+                    request_deserializer=lastmile_dot_v1_dot_driver__pb2.DeleteRouteRequest.FromString,
+                    response_serializer=lastmile_dot_v1_dot_driver__pb2.DeleteRouteResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -172,6 +188,33 @@ class DriverService(object):
             '/lastmile.v1.DriverService/GetRoute',
             lastmile_dot_v1_dot_driver__pb2.GetRouteRequest.SerializeToString,
             lastmile_dot_v1_dot_driver__pb2.GetRouteResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DeleteRoute(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/lastmile.v1.DriverService/DeleteRoute',
+            lastmile_dot_v1_dot_driver__pb2.DeleteRouteRequest.SerializeToString,
+            lastmile_dot_v1_dot_driver__pb2.DeleteRouteResponse.FromString,
             options,
             channel_credentials,
             insecure,

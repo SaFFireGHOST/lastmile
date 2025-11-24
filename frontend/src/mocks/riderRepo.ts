@@ -13,11 +13,11 @@ export async function createRequest(
   destination: string,
   etaMinutes: number
 ): Promise<RiderRequest> {
-  await delay(300 + Math.random() * 300);
-  
+  await delay(50 + Math.random() * 50);
+
   const now = new Date();
   const etaAbsolute = new Date(now.getTime() + etaMinutes * 60000);
-  
+
   const request: RiderRequest = {
     id: `REQ-${String(idCounter++).padStart(4, '0')}`,
     riderId,
@@ -29,20 +29,20 @@ export async function createRequest(
     createdAt: now,
     updatedAt: now,
   };
-  
+
   requests.push(request);
   return request;
 }
 
 export async function getRequestsByRider(riderId: string): Promise<RiderRequest[]> {
-  await delay(300 + Math.random() * 300);
+  await delay(50 + Math.random() * 50);
   return requests.filter((r) => r.riderId === riderId).sort(
     (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
   );
 }
 
 export async function getAllRequests(): Promise<RiderRequest[]> {
-  await delay(300 + Math.random() * 300);
+  await delay(50 + Math.random() * 50);
   return [...requests].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 

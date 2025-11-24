@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18lastmile/v1/driver.proto\x12\x0blastmile.v1\"D\n\x0cRouteStation\x12\x12\n\nstation_id\x18\x01 \x01(\t\x12 \n\x18minutes_before_eta_match\x18\x02 \x01(\x05\"\x95\x01\n\x0b\x44riverRoute\x12\n\n\x02id\x18\x01 \x01(\t\x12\x11\n\tdriver_id\x18\x02 \x01(\t\x12\x11\n\tdest_area\x18\x03 \x01(\t\x12\x13\n\x0bseats_total\x18\x04 \x01(\x05\x12\x12\n\nseats_free\x18\x05 \x01(\x05\x12+\n\x08stations\x18\x06 \x03(\x0b\x32\x19.lastmile.v1.RouteStation\"?\n\x14RegisterRouteRequest\x12\'\n\x05route\x18\x01 \x01(\x0b\x32\x18.lastmile.v1.DriverRoute\"@\n\x15RegisterRouteResponse\x12\'\n\x05route\x18\x01 \x01(\x0b\x32\x18.lastmile.v1.DriverRoute\":\n\x12UpdateSeatsRequest\x12\x10\n\x08route_id\x18\x01 \x01(\t\x12\x12\n\nseats_free\x18\x02 \x01(\x05\">\n\x13UpdateSeatsResponse\x12\'\n\x05route\x18\x01 \x01(\x0b\x32\x18.lastmile.v1.DriverRoute\"#\n\x0fGetRouteRequest\x12\x10\n\x08route_id\x18\x01 \x01(\t\";\n\x10GetRouteResponse\x12\'\n\x05route\x18\x01 \x01(\x0b\x32\x18.lastmile.v1.DriverRoute2\x82\x02\n\rDriverService\x12V\n\rRegisterRoute\x12!.lastmile.v1.RegisterRouteRequest\x1a\".lastmile.v1.RegisterRouteResponse\x12P\n\x0bUpdateSeats\x12\x1f.lastmile.v1.UpdateSeatsRequest\x1a .lastmile.v1.UpdateSeatsResponse\x12G\n\x08GetRoute\x12\x1c.lastmile.v1.GetRouteRequest\x1a\x1d.lastmile.v1.GetRouteResponseB?Z=github.com/yourorg/lastmile/api/gen/go/lastmile/v1;lastmilev1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18lastmile/v1/driver.proto\x12\x0blastmile.v1\"D\n\x0cRouteStation\x12\x12\n\nstation_id\x18\x01 \x01(\t\x12 \n\x18minutes_before_eta_match\x18\x02 \x01(\x05\"\x95\x01\n\x0b\x44riverRoute\x12\n\n\x02id\x18\x01 \x01(\t\x12\x11\n\tdriver_id\x18\x02 \x01(\t\x12\x11\n\tdest_area\x18\x03 \x01(\t\x12\x13\n\x0bseats_total\x18\x04 \x01(\x05\x12\x12\n\nseats_free\x18\x05 \x01(\x05\x12+\n\x08stations\x18\x06 \x03(\x0b\x32\x19.lastmile.v1.RouteStation\"?\n\x14RegisterRouteRequest\x12\'\n\x05route\x18\x01 \x01(\x0b\x32\x18.lastmile.v1.DriverRoute\"@\n\x15RegisterRouteResponse\x12\'\n\x05route\x18\x01 \x01(\x0b\x32\x18.lastmile.v1.DriverRoute\":\n\x12UpdateSeatsRequest\x12\x10\n\x08route_id\x18\x01 \x01(\t\x12\x12\n\nseats_free\x18\x02 \x01(\x05\">\n\x13UpdateSeatsResponse\x12\'\n\x05route\x18\x01 \x01(\x0b\x32\x18.lastmile.v1.DriverRoute\"#\n\x0fGetRouteRequest\x12\x10\n\x08route_id\x18\x01 \x01(\t\";\n\x10GetRouteResponse\x12\'\n\x05route\x18\x01 \x01(\x0b\x32\x18.lastmile.v1.DriverRoute\"&\n\x12\x44\x65leteRouteRequest\x12\x10\n\x08route_id\x18\x01 \x01(\t\"\'\n\x13\x44\x65leteRouteResponse\x12\x10\n\x08route_id\x18\x01 \x01(\t2\xd4\x02\n\rDriverService\x12V\n\rRegisterRoute\x12!.lastmile.v1.RegisterRouteRequest\x1a\".lastmile.v1.RegisterRouteResponse\x12P\n\x0bUpdateSeats\x12\x1f.lastmile.v1.UpdateSeatsRequest\x1a .lastmile.v1.UpdateSeatsResponse\x12G\n\x08GetRoute\x12\x1c.lastmile.v1.GetRouteRequest\x1a\x1d.lastmile.v1.GetRouteResponse\x12P\n\x0b\x44\x65leteRoute\x12\x1f.lastmile.v1.DeleteRouteRequest\x1a .lastmile.v1.DeleteRouteResponseB?Z=github.com/yourorg/lastmile/api/gen/go/lastmile/v1;lastmilev1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -48,6 +48,10 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_GETROUTEREQUEST']._serialized_end=553
   _globals['_GETROUTERESPONSE']._serialized_start=555
   _globals['_GETROUTERESPONSE']._serialized_end=614
-  _globals['_DRIVERSERVICE']._serialized_start=617
-  _globals['_DRIVERSERVICE']._serialized_end=875
+  _globals['_DELETEROUTEREQUEST']._serialized_start=616
+  _globals['_DELETEROUTEREQUEST']._serialized_end=654
+  _globals['_DELETEROUTERESPONSE']._serialized_start=656
+  _globals['_DELETEROUTERESPONSE']._serialized_end=695
+  _globals['_DRIVERSERVICE']._serialized_start=698
+  _globals['_DRIVERSERVICE']._serialized_end=1038
 # @@protoc_insertion_point(module_scope)

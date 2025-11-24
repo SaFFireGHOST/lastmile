@@ -30,7 +30,7 @@ class DriverServer(driver_pb2_grpc.DriverServiceServicer):
             "driver_id": r.driver_id,
             "dest_area": r.dest_area,
             "seats_total": r.seats_total,
-            "seats_free": r.seats_free or r.seats_total,
+            "seats_free": r.seats_free,
             "stations": stations_data
         }
         
@@ -95,6 +95,17 @@ class DriverServer(driver_pb2_grpc.DriverServiceServicer):
             stations=stations_pb
         )
         return driver_pb2.GetRouteResponse(route=r)
+
+    async def DeleteRoute(self, request, context):
+        print(f"[driver] DeleteRoute request={request}")
+        from bson.objectid import ObjectId
+        try:
+            oid = ObjectId(request.route_id)
+            res = self.routes.delete_one({"_id": oid})
+        except Exception as e:
+            print(f"[driver] DeleteRoute error: {e}")
+            
+        return driver_pb2.DeleteRouteResponse(route_id=request.route_id)
 
 def factory():
     server = grpc.aio.server()
