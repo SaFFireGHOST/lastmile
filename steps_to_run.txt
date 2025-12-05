@@ -9,14 +9,13 @@
 Run the following commands from the `lastmile` directory:
 
 ```bash
-docker build -t lastmile-backend:latest -f Dockerfile.backend .
-docker build -t lastmile-frontend:latest -f frontend/Dockerfile frontend/
+./build_images.sh
 ```
 
 > [!IMPORTANT]
 > **If using Minikube**, you must load the images into the Minikube cluster:
 > ```bash
-> minikube image load lastmile-backend:latest lastmile-frontend:latest
+> ./load_images_minikube.sh
 > ```
 > Alternatively, you can point your shell to Minikube's Docker daemon before building: `eval $(minikube docker-env)`
 

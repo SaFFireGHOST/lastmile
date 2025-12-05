@@ -10,3 +10,4 @@ docker build -f Dockerfile.notification -t notification-svc:latest .
 docker build -f Dockerfile.matching -t matching-svc:latest .
 docker build -f Dockerfile.location -t location-svc:latest .
 docker build -f Dockerfile.gateway -t gateway-svc:latest .
+docker build -t lastmile-frontend:latest -f frontend/Dockerfile frontend/
