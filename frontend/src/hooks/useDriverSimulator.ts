@@ -9,33 +9,36 @@ interface SimulatorState {
   distanceToStation: number | null;
   etaMinutes: number | null;
   insideGeofence: boolean;
+  currentTargetIndex: number;
 }
 
 const GEOFENCE_RADIUS = 400; // meters
 const SPEED_MPS = 25; // 25 meters per second (~90 km/h)
 const UPDATE_INTERVAL = 1000; // Update every second
 
-export function useDriverSimulator(targetStation: Station | null) {
+export function useDriverSimulator(targetStations: Station[]) {
   const [state, setState] = useState<SimulatorState>({
     isRunning: false,
     position: null,
     distanceToStation: null,
     etaMinutes: null,
     insideGeofence: false,
+    currentTargetIndex: -1,
   });
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const notifiedGeofenceRef = useRef(false);
 
   const start = useCallback(() => {
-    if (!targetStation) return;
+    if (!targetStations || targetStations.length === 0) return;
 
-    // Start 1 km away from station
+    // Start 1 km away from the first station
+    const firstStation = targetStations[0];
     const startDistance = 1000; // meters
     const bearing = Math.random() * 360; // Random direction
     const startPos = movePoint(
-      targetStation.lat,
-      targetStation.lon,
+      firstStation.lat,
+      firstStation.lon,
       bearing,
       startDistance
     );
@@ -46,10 +49,11 @@ export function useDriverSimulator(targetStation: Station | null) {
       distanceToStation: startDistance,
       etaMinutes: Math.ceil(startDistance / SPEED_MPS / 60),
       insideGeofence: false,
+      currentTargetIndex: 0,
     });
 
     notifiedGeofenceRef.current = false;
-  }, [targetStation]);
+  }, [targetStations]);
 
   const stop = useCallback(() => {
     if (intervalRef.current) {
@@ -62,45 +66,64 @@ export function useDriverSimulator(targetStation: Station | null) {
       distanceToStation: null,
       etaMinutes: null,
       insideGeofence: false,
+      currentTargetIndex: -1,
     });
     notifiedGeofenceRef.current = false;
   }, []);
 
   useEffect(() => {
-    if (!state.isRunning || !state.position || !targetStation) return;
+    if (!state.isRunning || !state.position || targetStations.length === 0 || state.currentTargetIndex === -1) return;
+
+    const currentTarget = targetStations[state.currentTargetIndex];
+    if (!currentTarget) return;
 
     intervalRef.current = setInterval(() => {
       setState((prev) => {
-        if (!prev.position || !targetStation) return prev;
+        if (!prev.position) return prev;
 
         const distance = calculateDistance(
           prev.position.lat,
           prev.position.lon,
-          targetStation.lat,
-          targetStation.lon
+          currentTarget.lat,
+          currentTarget.lon
         );
 
-        // Check if arrived
+        // Check if arrived at current station
         if (distance < 10) {
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
+          // If there are more stations, move to next
+          if (prev.currentTargetIndex < targetStations.length - 1) {
+            // Reset geofence notification for the next station
+            notifiedGeofenceRef.current = false;
+
+            return {
+              ...prev,
+              currentTargetIndex: prev.currentTargetIndex + 1,
+              distanceToStation: null, // Will be recalculated next tick for new target
+              etaMinutes: null,
+              insideGeofence: false,
+            };
+          } else {
+            // Arrived at final station
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+              intervalRef.current = null;
+            }
+            return {
+              ...prev,
+              isRunning: false,
+              distanceToStation: 0,
+              etaMinutes: 0,
+              insideGeofence: true,
+            };
           }
-          return {
-            ...prev,
-            isRunning: false,
-            distanceToStation: 0,
-            etaMinutes: 0,
-            insideGeofence: true,
-          };
         }
 
-        // Move towards station
+        // Move towards current station
         const bearing = calculateBearing(
           prev.position.lat,
           prev.position.lon,
-          targetStation.lat,
-          targetStation.lon
+          currentTarget.lat,
+          currentTarget.lon
         );
 
         const newPos = movePoint(
@@ -113,8 +136,8 @@ export function useDriverSimulator(targetStation: Station | null) {
         const newDistance = calculateDistance(
           newPos.lat,
           newPos.lon,
-          targetStation.lat,
-          targetStation.lon
+          currentTarget.lat,
+          currentTarget.lon
         );
 
         const insideGeofence = newDistance <= GEOFENCE_RADIUS;
@@ -140,7 +163,7 @@ export function useDriverSimulator(targetStation: Station | null) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [state.isRunning, targetStation]);
+  }, [state.isRunning, state.currentTargetIndex, targetStations]);
 
   return {
     ...state,

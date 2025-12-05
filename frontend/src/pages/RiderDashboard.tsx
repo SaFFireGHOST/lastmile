@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Clock, MapPin, CheckCircle2, Loader2 } from 'lucide-react';
+import { Clock, MapPin, CheckCircle2, Loader2, Users, Train, Navigation } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -163,31 +163,33 @@ export const RiderDashboard = () => {
 
     const getStatusBadge = (status: string) => {
         const variants: Record<string, { variant: any; label: string }> = {
-            PENDING: { variant: 'outline', label: 'Pending' },
-            ASSIGNED: { variant: 'default', label: 'Assigned' },
+            PENDING: { variant: 'warning', label: 'Pending' },
+            ASSIGNED: { variant: 'accent', label: 'Assigned' },
             COMPLETED: { variant: 'secondary', label: 'Completed' },
         };
         const config = variants[status] || variants.PENDING;
         return (
-            <Badge variant={config.variant} className={
-                status === 'ASSIGNED' ? 'bg-green-500 text-white' :
-                    status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
-                        ''
-            }>
+            <Badge variant={config.variant}>
                 {config.label}
             </Badge>
         );
     };
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6 p-8">
+        <div className="max-w-7xl mx-auto space-y-6 p-6 md:p-8">
+            {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold">Rider Dashboard</h1>
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-[hsl(82,72%,40%)] flex items-center justify-center shadow-lime-glow">
+                            <Users className="h-5 w-5 text-accent-foreground" />
+                        </div>
+                        <h1 className="text-3xl font-bold font-display text-foreground">Rider Dashboard</h1>
+                    </div>
                     <p className="text-muted-foreground">Request rides from metro stations</p>
                 </div>
                 <div className="flex items-center gap-4">
-                    <span className="text-gray-600">Welcome, {user?.name}</span>
+                    <span className="text-muted-foreground hidden sm:inline">Welcome, <span className="font-semibold text-foreground">{user?.name}</span></span>
                     <Notifications />
                     <Button variant="destructive" onClick={logout}>Logout</Button>
                 </div>
@@ -195,9 +197,12 @@ export const RiderDashboard = () => {
 
             <div className="grid lg:grid-cols-2 gap-6">
                 {/* Request Form */}
-                <Card className="rounded-2xl">
+                <Card>
                     <CardHeader>
-                        <CardTitle>Create Ride Request</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <Train className="h-5 w-5 text-primary" />
+                            <CardTitle>Create Ride Request</CardTitle>
+                        </div>
                         <CardDescription>Enter your details to request a ride</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -208,10 +213,10 @@ export const RiderDashboard = () => {
                                     id="riderId"
                                     {...register('riderId')}
                                     readOnly // Make read-only as it comes from auth
-                                    className="bg-gray-100"
+                                    className="bg-muted"
                                 />
                                 {errors.riderId && (
-                                    <p className="text-sm text-red-500">{errors.riderId.message}</p>
+                                    <p className="text-sm text-destructive">{errors.riderId.message}</p>
                                 )}
                             </div>
 
@@ -221,7 +226,7 @@ export const RiderDashboard = () => {
                                     onValueChange={(value) => setValue('stationId', value)}
                                     disabled={stationsLoading || !!activeRequest}
                                 >
-                                    <SelectTrigger id="stationId">
+                                    <SelectTrigger id="stationId" className="h-11">
                                         <SelectValue placeholder="Select station" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -233,7 +238,7 @@ export const RiderDashboard = () => {
                                     </SelectContent>
                                 </Select>
                                 {errors.stationId && (
-                                    <p className="text-sm text-red-500">{errors.stationId.message}</p>
+                                    <p className="text-sm text-destructive">{errors.stationId.message}</p>
                                 )}
                             </div>
 
@@ -245,7 +250,7 @@ export const RiderDashboard = () => {
                                             <Badge
                                                 key={area}
                                                 variant="secondary"
-                                                className={`cursor-pointer hover:bg-primary hover:text-primary-foreground ${activeRequest ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                className={`cursor-pointer transition-all duration-200 hover:bg-primary hover:text-primary-foreground ${activeRequest ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                 onClick={() => !activeRequest && setValue('destination', area)}
                                             >
                                                 {area}
@@ -264,7 +269,7 @@ export const RiderDashboard = () => {
                                     disabled={!!activeRequest}
                                 />
                                 {errors.destination && (
-                                    <p className="text-sm text-red-500">{errors.destination.message}</p>
+                                    <p className="text-sm text-destructive">{errors.destination.message}</p>
                                 )}
                             </div>
 
@@ -283,11 +288,11 @@ export const RiderDashboard = () => {
                                     disabled={!!activeRequest}
                                 />
                                 {errors.etaMinutes && (
-                                    <p className="text-sm text-red-500">{errors.etaMinutes.message}</p>
+                                    <p className="text-sm text-destructive">{errors.etaMinutes.message}</p>
                                 )}
                             </div>
 
-                            <Button type="submit" className="w-full" disabled={isSubmitting || !!activeRequest}>
+                            <Button type="submit" className="w-full" variant="accent" disabled={isSubmitting || !!activeRequest}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {activeRequest ? 'Ride in Progress' : 'Request Ride'}
                             </Button>
@@ -296,82 +301,85 @@ export const RiderDashboard = () => {
                 </Card>
 
                 {/* Map */}
-                <Card className="rounded-2xl">
+                <Card>
                     <CardHeader>
-                        <CardTitle>Station Location</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <Navigation className="h-5 w-5 text-accent" />
+                            <CardTitle>Station Location</CardTitle>
+                        </div>
                         <CardDescription>
                             {selectedStation
                                 ? `${selectedStation.name} - 400m geofence`
                                 : 'Select a station to view map'}
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="h-[400px] p-0">
-                        <GeoMap station={selectedStation ? {
+                    <CardContent className="h-[400px] p-0 overflow-hidden rounded-b-2xl">
+                        <GeoMap stations={selectedStation ? [{
                             id: selectedStation.id,
                             name: selectedStation.name,
                             lat: selectedStation.location.lat,
                             lon: selectedStation.location.lon,
                             nearbyAreas: selectedStation.nearbyAreas
-                        } : null} />
+                        }] : []} />
                     </CardContent>
                 </Card>
             </div>
 
             {/* My Requests */}
-            <Card className="rounded-2xl">
+            <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle>My Requests</CardTitle>
-                            <CardDescription>
-                                Showing recent requests
-                            </CardDescription>
-                        </div>
                         <div className="flex items-center gap-2">
-                            <Label htmlFor="simulate">Simulate Assignment</Label>
-                            <Switch
-                                id="simulate"
-                                checked={simulateEnabled}
-                                onCheckedChange={setSimulateEnabled}
-                            />
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                                <Clock className="h-4 w-4 text-primary" />
+                            </div>
+                            <div>
+                                <CardTitle>My Requests</CardTitle>
+                                <CardDescription>
+                                    Showing recent requests
+                                </CardDescription>
+                            </div>
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent>
                     {requests.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                            No requests yet. Create your first ride request above.
+                        <div className="text-center py-12 text-muted-foreground bg-muted/30 rounded-xl">
+                            <Users className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                            <p>No requests yet. Create your first ride request above.</p>
                         </div>
                     ) : (
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             {requests.map((request) => {
                                 const station = stations.find((s) => s.id === request.stationId);
                                 return (
                                     <div
                                         key={request.id}
-                                        className="flex items-start gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                                        className="flex items-start gap-4 p-4 border rounded-xl hover:bg-muted/30 transition-all duration-200"
                                     >
-                                        <div className="flex-1 space-y-1">
+                                        <div className="flex-1 space-y-2">
                                             <div className="flex items-center gap-2">
-                                                <span className="font-semibold">{request.id}</span>
+                                                <span className="font-semibold text-foreground">{request.id}</span>
                                                 {getStatusBadge(request.status)}
                                             </div>
                                             <div className="text-sm text-muted-foreground space-y-1">
-                                                <div className="flex items-center gap-1">
-                                                    <MapPin className="h-3 w-3" />
+                                                <div className="flex items-center gap-2">
+                                                    <MapPin className="h-3.5 w-3.5 text-primary" />
                                                     <span>{station?.name || request.stationId}</span>
-                                                    <span className="mx-1">→</span>
+                                                    <span className="text-muted-foreground/50">→</span>
                                                     <span>{request.destination}</span>
                                                 </div>
-                                                <div className="flex items-center gap-1">
-                                                    <Clock className="h-3 w-3" />
+                                                <div className="flex items-center gap-2">
+                                                    <Clock className="h-3.5 w-3.5 text-secondary" />
                                                     <span>ETA: {request.etaAbsolute.toLocaleTimeString()}</span>
-                                                    <span className="text-xs">({formatDistanceToNow(request.etaAbsolute, { addSuffix: true })})</span>
+                                                    <span className="text-xs text-muted-foreground/70">({formatDistanceToNow(request.etaAbsolute, { addSuffix: true })})</span>
                                                 </div>
                                             </div>
                                         </div>
                                         {request.status === 'ASSIGNED' && (
-                                            <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                                            <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
+                                                <CheckCircle2 className="h-5 w-5 text-accent" />
+                                            </div>
                                         )}
                                     </div>
                                 );

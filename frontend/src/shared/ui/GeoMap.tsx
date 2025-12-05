@@ -13,7 +13,7 @@ L.Icon.Default.mergeOptions({
 
 interface GeoMapProps {
   center?: { lat: number; lon: number };
-  station?: Station | null;
+  stations?: Station[];
   driverPosition?: { lat: number; lon: number } | null;
   geofenceRadius?: number;
   className?: string;
@@ -21,7 +21,7 @@ interface GeoMapProps {
 
 export function GeoMap({
   center,
-  station,
+  stations = [],
   driverPosition,
   geofenceRadius = 400,
   className = '',
@@ -29,17 +29,18 @@ export function GeoMap({
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<{
-    station?: L.Marker;
+    stations: L.LayerGroup;
     driver?: L.Marker;
-    circle?: L.Circle;
-  }>({});
+  }>({ stations: L.layerGroup() });
+
+  const prevStationIds = useRef<string>('');
 
   // Initialize map
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    const defaultCenter = center || station || { lat: 12.9716, lon: 77.5946 };
-    
+    const defaultCenter = center || (stations.length > 0 ? stations[0] : { lat: 12.9716, lon: 77.5946 });
+
     mapRef.current = L.map(mapContainerRef.current).setView(
       [defaultCenter.lat, defaultCenter.lon],
       14
@@ -50,6 +51,8 @@ export function GeoMap({
       maxZoom: 19,
     }).addTo(mapRef.current);
 
+    markersRef.current.stations.addTo(mapRef.current);
+
     return () => {
       if (mapRef.current) {
         mapRef.current.remove();
@@ -58,58 +61,72 @@ export function GeoMap({
     };
   }, []);
 
-  // Update station marker and geofence
+  // Update station markers and geofences
   useEffect(() => {
     if (!mapRef.current) return;
 
-    // Remove old markers
-    if (markersRef.current.station) {
-      markersRef.current.station.remove();
-    }
-    if (markersRef.current.circle) {
-      markersRef.current.circle.remove();
-    }
+    markersRef.current.stations.clearLayers();
 
-    if (station) {
-      // Add station marker
-      const stationIcon = L.divIcon({
-        html: `<div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground shadow-lg">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect width="16" height="16" x="4" y="4" rx="2"/>
-            <rect width="6" height="6" x="9" y="9" rx="1"/>
-            <path d="M15 2v2"/>
-            <path d="M15 20v2"/>
-            <path d="M2 15h2"/>
-            <path d="M2 9h2"/>
-            <path d="M20 15h2"/>
-            <path d="M20 9h2"/>
-            <path d="M9 2v2"/>
-            <path d="M9 20v2"/>
-          </svg>
-        </div>`,
-        className: '',
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
+    if (stations && stations.length > 0) {
+      const bounds = L.latLngBounds([]);
+      const currentStationIds = stations.map(s => s.id).sort().join(',');
+
+      stations.forEach(station => {
+        // Add station marker
+        const stationIcon = L.divIcon({
+          html: `<div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground shadow-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="16" height="16" x="4" y="4" rx="2"/>
+              <rect width="6" height="6" x="9" y="9" rx="1"/>
+              <path d="M15 2v2"/>
+              <path d="M15 20v2"/>
+              <path d="M2 15h2"/>
+              <path d="M2 9h2"/>
+              <path d="M20 15h2"/>
+              <path d="M20 9h2"/>
+              <path d="M9 2v2"/>
+              <path d="M9 20v2"/>
+              <path d="M9 20v2"/>
+            </svg>
+          </div>`,
+          className: '',
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
+        });
+
+        const marker = L.marker([station.lat, station.lon], {
+          icon: stationIcon,
+        })
+          .bindPopup(`<strong>${station.name}</strong><br/>Areas: ${station.nearbyAreas.join(', ')}`);
+
+        markersRef.current.stations.addLayer(marker);
+
+        // Add geofence circle
+        const circle = L.circle([station.lat, station.lon], {
+          color: 'hsl(200, 98%, 39%)',
+          fillColor: 'hsl(200, 98%, 39%)',
+          fillOpacity: 0.1,
+          radius: geofenceRadius,
+        });
+
+        markersRef.current.stations.addLayer(circle);
+
+        bounds.extend([station.lat, station.lon]);
       });
 
-      markersRef.current.station = L.marker([station.lat, station.lon], {
-        icon: stationIcon,
-      })
-        .addTo(mapRef.current)
-        .bindPopup(`<strong>${station.name}</strong><br/>Areas: ${station.nearbyAreas.join(', ')}`);
-
-      // Add geofence circle
-      markersRef.current.circle = L.circle([station.lat, station.lon], {
-        color: 'hsl(200, 98%, 39%)',
-        fillColor: 'hsl(200, 98%, 39%)',
-        fillOpacity: 0.1,
-        radius: geofenceRadius,
-      }).addTo(mapRef.current);
-
-      // Center map on station
-      mapRef.current.setView([station.lat, station.lon], 15);
+      // Fit bounds only if stations have changed
+      if (stations.length > 0 && currentStationIds !== prevStationIds.current) {
+        if (stations.length === 1) {
+          // If only one station, zoom to it with a specific level (e.g., 15)
+          mapRef.current.setView([stations[0].lat, stations[0].lon], 15);
+        } else {
+          // If multiple stations, fit bounds to show all
+          mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+        }
+        prevStationIds.current = currentStationIds;
+      }
     }
-  }, [station, geofenceRadius]);
+  }, [stations, geofenceRadius]);
 
   // Update driver marker
   useEffect(() => {

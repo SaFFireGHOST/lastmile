@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Edit, Trash2, MapPin } from 'lucide-react';
+import { Plus, Edit, Trash2, MapPin, Train, Navigation } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -98,22 +98,28 @@ export default function Stations() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 p-6 md:p-8">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Stations Admin</h1>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-secondary to-[hsl(240,50%,45%)] flex items-center justify-center shadow-urban">
+              <Train className="h-5 w-5 text-white" />
+            </div>
+            <h1 className="text-3xl font-bold font-display">Stations Admin</h1>
+          </div>
           <p className="text-muted-foreground">Manage metro stations and their locations</p>
         </div>
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
-            <Button onClick={() => openEditSheet(null)}>
+            <Button onClick={() => openEditSheet(null)} variant="accent">
               <Plus className="mr-2 h-4 w-4" />
               Add Station
             </Button>
           </SheetTrigger>
           <SheetContent className="overflow-y-auto">
             <SheetHeader>
-              <SheetTitle>{editingStation ? 'Edit Station' : 'Add New Station'}</SheetTitle>
+              <SheetTitle className="font-display">{editingStation ? 'Edit Station' : 'Add New Station'}</SheetTitle>
               <SheetDescription>
                 {editingStation ? 'Update station details' : 'Create a new metro station'}
               </SheetDescription>
@@ -177,7 +183,7 @@ export default function Stations() {
                 )}
               </div>
 
-              <Button type="submit" className="w-full" disabled={upsertStation.isPending}>
+              <Button type="submit" className="w-full" variant="urban-gradient" disabled={upsertStation.isPending}>
                 {upsertStation.isPending ? 'Saving...' : editingStation ? 'Update Station' : 'Create Station'}
               </Button>
             </form>
@@ -187,32 +193,35 @@ export default function Stations() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Stations List */}
-        <Card className="rounded-2xl">
+        <Card>
           <CardHeader>
-            <CardTitle>All Stations</CardTitle>
+            <div className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-primary" />
+              <CardTitle>All Stations</CardTitle>
+            </div>
             <CardDescription>Click a station to view on map</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {stations.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  No stations yet. Add your first station.
-                </p>
+                <div className="text-center text-muted-foreground py-12 bg-muted/30 rounded-xl">
+                  <Train className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                  <p>No stations yet. Add your first station.</p>
+                </div>
               ) : (
                 stations.map((station) => (
                   <div
                     key={station.id}
-                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                      selectedStation?.id === station.id
-                        ? 'border-primary bg-primary/5'
-                        : 'hover:bg-muted/50'
-                    }`}
+                    className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 ${selectedStation?.id === station.id
+                        ? 'border-primary bg-primary/5 shadow-urban'
+                        : 'hover:bg-muted/50 hover:border-primary/30'
+                      }`}
                     onClick={() => setSelectedStation(station)}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <MapPin className="h-4 w-4 text-primary" />
+                          <MapPin className={`h-4 w-4 ${selectedStation?.id === station.id ? 'text-primary' : 'text-muted-foreground'}`} />
                           <span className="font-semibold">{station.name}</span>
                         </div>
                         <p className="text-sm text-muted-foreground font-mono mb-2">
@@ -237,6 +246,7 @@ export default function Stations() {
                             e.stopPropagation();
                             openEditSheet(station);
                           }}
+                          className="h-8 w-8"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -247,8 +257,9 @@ export default function Stations() {
                             e.stopPropagation();
                             handleDelete(station.id);
                           }}
+                          className="h-8 w-8 text-destructive hover:text-destructive"
                         >
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -260,16 +271,19 @@ export default function Stations() {
         </Card>
 
         {/* Map */}
-        <Card className="rounded-2xl">
+        <Card>
           <CardHeader>
-            <CardTitle>Station Location</CardTitle>
+            <div className="flex items-center gap-2">
+              <Navigation className="h-5 w-5 text-accent" />
+              <CardTitle>Station Location</CardTitle>
+            </div>
             <CardDescription>
               {selectedStation
                 ? `${selectedStation.name} - 400m geofence`
                 : 'Select a station to view location'}
             </CardDescription>
           </CardHeader>
-          <CardContent className="h-[500px] p-0">
+          <CardContent className="h-[500px] p-0 overflow-hidden rounded-b-2xl">
             <GeoMap station={selectedStation} />
           </CardContent>
         </Card>

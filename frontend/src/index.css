@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 @theme {
   --color-border: hsl(var(--border));
@@ -28,18 +29,29 @@
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
 
+  /* Urban Mobility Custom Colors */
+  --color-urban-blue: hsl(var(--urban-blue));
+  --color-urban-indigo: hsl(var(--urban-indigo));
+  --color-urban-lime: hsl(var(--urban-lime));
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-slide-up: slide-up 0.4s ease-out;
+  --animate-pulse-glow: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-shimmer: shimmer 2s linear infinite;
+  --animate-float: float 3s ease-in-out infinite;
 
   @keyframes accordion-down {
     from {
       height: 0;
     }
-
     to {
       height: var(--radix-accordion-content-height);
     }
@@ -49,57 +61,171 @@
     from {
       height: var(--radix-accordion-content-height);
     }
-
     to {
       height: 0;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 5px var(--urban-lime-glow), 0 0 20px var(--urban-lime-glow);
+    }
+    50% {
+      box-shadow: 0 0 20px var(--urban-lime-glow), 0 0 40px var(--urban-lime-glow);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
     }
   }
 }
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 215 25% 15%;
+    /* Urban Mobility Light Theme */
+    --background: 220 20% 97%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
-    --primary: 200 98% 39%;
+    --popover-foreground: 222 47% 11%;
+    
+    /* Primary: Deep Blue */
+    --primary: 222 60% 35%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 30% 96%;
-    --secondary-foreground: 215 25% 15%;
-    --muted: 210 30% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 25 95% 53%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
+    
+    /* Secondary: Indigo */
+    --secondary: 240 50% 55%;
+    --secondary-foreground: 0 0% 100%;
+    
+    /* Muted */
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 12% 45%;
+    
+    /* Accent: Lime Green */
+    --accent: 82 72% 48%;
+    --accent-foreground: 222 47% 11%;
+    
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 200 98% 39%;
+    
+    --success: 142 72% 40%;
+    --success-foreground: 0 0% 100%;
+    
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 222 60% 35%;
     --radius: 0.75rem;
+    
+    /* Urban Mobility Custom Tokens */
+    --urban-blue: 222 60% 35%;
+    --urban-indigo: 240 50% 55%;
+    --urban-lime: 82 72% 48%;
+    --urban-lime-glow: hsla(82, 72%, 48%, 0.4);
+    
+    /* Sidebar */
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 220 20% 95%;
+    --sidebar-primary: 82 72% 48%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 240 50% 55%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 20% 18%;
+    --sidebar-ring: 82 72% 48%;
   }
 
   .dark {
-    --background: 215 28% 10%;
-    --foreground: 210 20% 95%;
-    --card: 215 25% 14%;
-    --card-foreground: 210 20% 95%;
-    --popover: 215 25% 14%;
-    --popover-foreground: 210 20% 95%;
-    --primary: 200 98% 45%;
+    /* Urban Mobility Dark Theme */
+    --background: 222 47% 8%;
+    --foreground: 220 20% 95%;
+    --card: 222 47% 11%;
+    --card-foreground: 220 20% 95%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 220 20% 95%;
+    
+    /* Primary: Deep Blue (lighter for dark mode) */
+    --primary: 222 60% 50%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 215 25% 20%;
-    --secondary-foreground: 210 20% 95%;
-    --muted: 215 25% 20%;
-    --muted-foreground: 215 12% 65%;
-    --accent: 25 95% 58%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 72% 51%;
+    
+    /* Secondary: Indigo (lighter for dark mode) */
+    --secondary: 240 50% 60%;
+    --secondary-foreground: 0 0% 100%;
+    
+    /* Muted */
+    --muted: 222 30% 18%;
+    --muted-foreground: 220 12% 65%;
+    
+    /* Accent: Lime Green */
+    --accent: 82 72% 52%;
+    --accent-foreground: 222 47% 11%;
+    
+    --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
-    --border: 215 25% 20%;
-    --input: 215 25% 20%;
-    --ring: 200 98% 45%;
+    
+    --success: 142 72% 45%;
+    --success-foreground: 0 0% 100%;
+    
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 100%;
+    
+    --border: 222 30% 18%;
+    --input: 222 30% 18%;
+    --ring: 222 60% 50%;
+    
+    /* Urban Mobility Custom Tokens */
+    --urban-blue: 222 60% 50%;
+    --urban-indigo: 240 50% 60%;
+    --urban-lime: 82 72% 52%;
+    --urban-lime-glow: hsla(82, 72%, 52%, 0.4);
+    
+    /* Sidebar */
+    --sidebar-background: 222 50% 6%;
+    --sidebar-foreground: 220 20% 95%;
+    --sidebar-primary: 82 72% 52%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 240 50% 60%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 222 30% 15%;
+    --sidebar-ring: 82 72% 52%;
   }
 
   * {
@@ -107,6 +233,66 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  }
+}
+
+/* Glass Morphism Utilities */
+@layer utilities {
+  .glass {
+    @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-slate-700/50;
+  }
+  
+  .glass-card {
+    @apply bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-xl border border-white/30 dark:border-slate-700/50;
+  }
+  
+  .gradient-urban {
+    @apply bg-gradient-to-br from-[hsl(222,60%,35%)] via-[hsl(240,50%,45%)] to-[hsl(240,50%,55%)];
+  }
+  
+  .gradient-urban-dark {
+    @apply bg-gradient-to-br from-[hsl(222,47%,11%)] via-[hsl(222,50%,15%)] to-[hsl(240,40%,20%)];
+  }
+  
+  .gradient-lime {
+    @apply bg-gradient-to-r from-[hsl(82,72%,48%)] to-[hsl(82,72%,40%)];
+  }
+  
+  .glow-lime {
+    box-shadow: 0 0 20px hsla(82, 72%, 48%, 0.3), 0 0 40px hsla(82, 72%, 48%, 0.1);
+  }
+  
+  .glow-blue {
+    box-shadow: 0 0 20px hsla(222, 60%, 35%, 0.3), 0 0 40px hsla(222, 60%, 35%, 0.1);
+  }
+  
+  .text-gradient-urban {
+    @apply bg-gradient-to-r from-[hsl(222,60%,35%)] to-[hsl(240,50%,55%)] bg-clip-text text-transparent;
+  }
+  
+  .text-gradient-lime {
+    @apply bg-gradient-to-r from-[hsl(82,72%,48%)] to-[hsl(82,72%,40%)] bg-clip-text text-transparent;
+  }
+
+  .animate-in {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl;
+  }
+
+  .hover-glow-lime {
+    @apply transition-all duration-300;
+  }
+  
+  .hover-glow-lime:hover {
+    box-shadow: 0 0 25px hsla(82, 72%, 48%, 0.4), 0 4px 20px rgba(0, 0, 0, 0.1);
   }
 }

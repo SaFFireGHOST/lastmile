@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Car, Play, Square, Navigation } from 'lucide-react';
+import { Car, Play, Square, Navigation, Route, MapPin, Users } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -117,18 +117,21 @@ export const DriverDashboard = () => {
         fetchStations();
     }, []);
 
-    const firstStation = stations.find((s) => s.id === selectedStations[0]);
+    // Map selected station IDs to full station objects for the simulator
+    const simulatorStations = selectedStations
+        .map(id => stations.find(s => s.id === id))
+        .filter((s): s is Station => !!s)
+        .map(s => ({
+            ...s,
+            lat: s.location.lat,
+            lon: s.location.lon,
+            nearbyAreas: s.nearbyAreas
+        }));
 
-    // Adapt station for simulator (needs lat/lon at top level)
-    const simulatorStation = firstStation ? {
-        ...firstStation,
-        lat: firstStation.location.lat,
-        lon: firstStation.location.lon,
-        nearbyAreas: firstStation.nearbyAreas
-    } : null;
+    const { isRunning, position, distanceToStation, etaMinutes, insideGeofence, start, stop, currentTargetIndex } =
+        useDriverSimulator(simulatorStations);
 
-    const { isRunning, position, distanceToStation, etaMinutes, insideGeofence, start, stop } =
-        useDriverSimulator(simulatorStation);
+    const currentTargetStation = currentTargetIndex >= 0 ? simulatorStations[currentTargetIndex] : null;
 
     const {
         register,
@@ -156,13 +159,22 @@ export const DriverDashboard = () => {
 
     const watchedSeatsTotal = watch('seatsTotal');
 
+    const lastGeofenceStationIdRef = useRef<string | null>(null);
+
     useEffect(() => {
-        if (insideGeofence && isRunning) {
-            toast.success('Entered geofence—matching would trigger now (mock)', {
-                icon: <Navigation className="h-4 w-4" />,
-            });
+        if (insideGeofence && isRunning && currentTargetStation) {
+            if (lastGeofenceStationIdRef.current !== currentTargetStation.id) {
+                toast.success(`Entered geofence for ${currentTargetStation.name}—matching would trigger now (mock)`, {
+                    icon: <Navigation className="h-4 w-4" />,
+                });
+                lastGeofenceStationIdRef.current = currentTargetStation.id;
+            }
         }
-    }, [insideGeofence, isRunning]);
+
+        if (!insideGeofence) {
+            lastGeofenceStationIdRef.current = null;
+        }
+    }, [insideGeofence, isRunning, currentTargetStation?.id]);
 
     // Send location updates when position changes
     useEffect(() => {
@@ -249,14 +261,20 @@ export const DriverDashboard = () => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6 p-8">
+        <div className="max-w-7xl mx-auto space-y-6 p-6 md:p-8 pb-12">
+            {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold">Driver Dashboard</h1>
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-urban">
+                            <Car className="h-5 w-5 text-white" />
+                        </div>
+                        <h1 className="text-3xl font-bold font-display text-foreground">Driver Dashboard</h1>
+                    </div>
                     <p className="text-muted-foreground">Manage your route and offer rides</p>
                 </div>
                 <div className="flex items-center gap-4">
-                    <span className="text-gray-600">Welcome, {user?.name}</span>
+                    <span className="text-muted-foreground hidden sm:inline">Welcome, <span className="font-semibold text-foreground">{user?.name}</span></span>
                     <Notifications />
                     <Button variant="destructive" onClick={logout}>Logout</Button>
                 </div>
@@ -264,16 +282,20 @@ export const DriverDashboard = () => {
 
             <div className="grid lg:grid-cols-2 gap-6">
                 {/* Route Form */}
-                <Card className="rounded-2xl">
+                <Card>
                     <CardHeader>
-                        <CardTitle>Register / Update Route</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <Route className="h-5 w-5 text-primary" />
+                            <CardTitle>Register / Update Route</CardTitle>
+                        </div>
                         <CardDescription>Set up your route and availability</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                             {existingRoute && (
-                                <div className="bg-yellow-50 p-3 rounded-md border border-yellow-200 mb-4 text-sm text-yellow-800">
-                                    You already have an active route. Complete your current trip or route to create a new one.
+                                <div className="bg-warning/10 p-4 rounded-xl border border-warning/30 mb-4 text-sm text-warning-foreground flex items-start gap-3">
+                                    <div className="w-2 h-2 rounded-full bg-warning mt-1.5 flex-shrink-0"></div>
+                                    <span>You already have an active route. Complete your current trip or route to create a new one.</span>
                                 </div>
                             )}
                             <fieldset disabled={!!existingRoute} className="space-y-4">
@@ -284,10 +306,10 @@ export const DriverDashboard = () => {
                                             id="driverId"
                                             {...register('driverId')}
                                             readOnly
-                                            className="bg-gray-100"
+                                            className="bg-muted"
                                         />
                                         {errors.driverId && (
-                                            <p className="text-sm text-red-500">{errors.driverId.message}</p>
+                                            <p className="text-sm text-destructive">{errors.driverId.message}</p>
                                         )}
                                     </div>
 
@@ -309,7 +331,7 @@ export const DriverDashboard = () => {
                                         {...register('destinationArea')}
                                     />
                                     {errors.destinationArea && (
-                                        <p className="text-sm text-red-500">{errors.destinationArea.message}</p>
+                                        <p className="text-sm text-destructive">{errors.destinationArea.message}</p>
                                     )}
                                 </div>
 
@@ -323,7 +345,7 @@ export const DriverDashboard = () => {
                                             {...register('seatsTotal', { valueAsNumber: true })}
                                         />
                                         {errors.seatsTotal && (
-                                            <p className="text-sm text-red-500">{errors.seatsTotal.message}</p>
+                                            <p className="text-sm text-destructive">{errors.seatsTotal.message}</p>
                                         )}
                                     </div>
 
@@ -337,7 +359,7 @@ export const DriverDashboard = () => {
                                             {...register('seatsFree', { valueAsNumber: true })}
                                         />
                                         {errors.seatsFree && (
-                                            <p className="text-sm text-red-500">{errors.seatsFree.message}</p>
+                                            <p className="text-sm text-destructive">{errors.seatsFree.message}</p>
                                         )}
                                     </div>
                                 </div>
@@ -349,7 +371,7 @@ export const DriverDashboard = () => {
                                             <Badge
                                                 key={station.id}
                                                 variant={selectedStations.includes(station.id) ? 'default' : 'outline'}
-                                                className={`cursor-pointer ${selectedStations.includes(station.id) ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`}
+                                                className={`cursor-pointer transition-all duration-200 ${selectedStations.includes(station.id) ? 'bg-primary text-primary-foreground shadow-urban' : 'hover:bg-muted'}`}
                                                 onClick={() => !existingRoute && toggleStation(station.id)}
                                             >
                                                 {station.name}
@@ -357,7 +379,7 @@ export const DriverDashboard = () => {
                                         ))}
                                     </div>
                                     {errors.stationIds && (
-                                        <p className="text-sm text-red-500">{errors.stationIds.message}</p>
+                                        <p className="text-sm text-destructive">{errors.stationIds.message}</p>
                                     )}
                                 </div>
 
@@ -375,13 +397,13 @@ export const DriverDashboard = () => {
                                         {...register('minutesBeforeEtaMatch', { valueAsNumber: true })}
                                     />
                                     {errors.minutesBeforeEtaMatch && (
-                                        <p className="text-sm text-red-500">
+                                        <p className="text-sm text-destructive">
                                             {errors.minutesBeforeEtaMatch.message}
                                         </p>
                                     )}
                                 </div>
 
-                                <Button type="submit" className="w-full" disabled={isSubmitting || !!existingRoute}>
+                                <Button type="submit" className="w-full" variant="urban-gradient" disabled={isSubmitting || !!existingRoute}>
                                     {isSubmitting ? 'Saving...' : 'Save Route'}
                                 </Button>
                             </fieldset>
@@ -391,44 +413,46 @@ export const DriverDashboard = () => {
 
                 {/* Active Route Summary */}
                 {existingRoute && (
-                    <Card className="rounded-2xl bg-blue-50 border-blue-200">
+                    <Card className="bg-gradient-to-br from-primary/5 to-secondary/5 border-primary/20">
                         <CardHeader>
                             <div className="flex items-center gap-2">
-                                <Car className="h-5 w-5 text-blue-600" />
+                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                                    <Route className="h-4 w-4 text-primary" />
+                                </div>
                                 <CardTitle>Active Route</CardTitle>
                             </div>
                             <CardDescription>Your current route configuration</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-3">
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                <div>
-                                    <span className="text-muted-foreground">Driver ID:</span>
-                                    <p className="font-semibold">{existingRoute.driverId}</p>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div className="space-y-1">
+                                    <span className="text-muted-foreground">Driver ID</span>
+                                    <p className="font-semibold text-foreground">{existingRoute.driverId}</p>
                                 </div>
                                 {existingRoute.routeId && (
-                                    <div>
-                                        <span className="text-muted-foreground">Route ID:</span>
-                                        <p className="font-semibold">{existingRoute.routeId}</p>
+                                    <div className="space-y-1">
+                                        <span className="text-muted-foreground">Route ID</span>
+                                        <p className="font-semibold text-foreground">{existingRoute.routeId}</p>
                                     </div>
                                 )}
-                                <div>
-                                    <span className="text-muted-foreground">Destination:</span>
-                                    <p className="font-semibold">{existingRoute.destinationArea}</p>
+                                <div className="space-y-1">
+                                    <span className="text-muted-foreground">Destination</span>
+                                    <p className="font-semibold text-foreground">{existingRoute.destinationArea}</p>
                                 </div>
-                                <div>
-                                    <span className="text-muted-foreground">Seats:</span>
-                                    <p className="font-semibold">
-                                        {existingRoute.seatsFree} / {existingRoute.seatsTotal} available
+                                <div className="space-y-1">
+                                    <span className="text-muted-foreground">Seats</span>
+                                    <p className="font-semibold text-foreground">
+                                        <span className="text-accent">{existingRoute.seatsFree}</span> / {existingRoute.seatsTotal} available
                                     </p>
                                 </div>
                             </div>
                             <div>
-                                <span className="text-muted-foreground text-sm">Stations:</span>
-                                <div className="flex flex-wrap gap-1 mt-1">
+                                <span className="text-muted-foreground text-sm">Stations</span>
+                                <div className="flex flex-wrap gap-2 mt-2">
                                     {existingRoute.stationIds.map((id) => {
                                         const station = stations.find((s) => s.id === id);
                                         return (
-                                            <Badge key={id} variant="secondary">
+                                            <Badge key={id} variant="secondary" className="bg-primary/10 text-primary border-0">
                                                 {station?.name || id}
                                             </Badge>
                                         );
@@ -439,7 +463,7 @@ export const DriverDashboard = () => {
                                 <Button
                                     onClick={handleDeleteRoute}
                                     variant="outline"
-                                    className="w-full mt-2 border-blue-300 text-blue-700 hover:bg-blue-100"
+                                    className="w-full mt-2 border-primary/30 text-primary hover:bg-primary/10"
                                 >
                                     Destination Reached
                                 </Button>
@@ -450,15 +474,21 @@ export const DriverDashboard = () => {
 
                 {/* Active Trip Actions */}
                 {activeTripId && (
-                    <Card className="rounded-2xl bg-green-50 border-green-200">
+                    <Card className="bg-gradient-to-br from-accent/5 to-accent/10 border-accent/20">
                         <CardHeader>
-                            <CardTitle>Active Trip</CardTitle>
-                            <CardDescription>You have an ongoing trip.</CardDescription>
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
+                                    <Users className="h-4 w-4 text-accent" />
+                                </div>
+                                <CardTitle className="text-accent-foreground">Active Trip</CardTitle>
+                            </div>
+                            <CardDescription>You have an ongoing trip with riders.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <Button
                                 onClick={handleCompleteTrip}
-                                className="w-full bg-green-600 hover:bg-green-700 text-white"
+                                variant="accent"
+                                className="w-full"
                             >
                                 Complete Trip
                             </Button>
@@ -468,20 +498,26 @@ export const DriverDashboard = () => {
             </div>
 
             {/* Simulator */}
-            <div className="grid lg:grid-cols-2 gap-6">
-                <Card className="rounded-2xl">
+            <div className="grid lg:grid-cols-2 gap-6 mb-12">
+                <Card>
                     <CardHeader>
-                        <CardTitle>Driver Movement Simulator</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center">
+                                <Navigation className="h-4 w-4 text-secondary" />
+                            </div>
+                            <CardTitle>Driver Movement Simulator</CardTitle>
+                        </div>
                         <CardDescription>
-                            Simulate driving to the first station in your route
+                            Simulate driving through your selected stations
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="flex gap-2">
+                        <div className="flex gap-3">
                             <Button
                                 onClick={start}
-                                disabled={isRunning || !firstStation}
+                                disabled={isRunning || simulatorStations.length === 0}
                                 className="flex-1"
+                                variant="urban-gradient"
                             >
                                 <Play className="mr-2 h-4 w-4" />
                                 Start Simulation
@@ -492,34 +528,40 @@ export const DriverDashboard = () => {
                             </Button>
                         </div>
 
-                        {!firstStation && (
-                            <p className="text-sm text-muted-foreground text-center">
+                        {simulatorStations.length === 0 && (
+                            <p className="text-sm text-muted-foreground text-center py-4 bg-muted/50 rounded-xl">
                                 Select at least one station in your route to enable simulation
                             </p>
                         )}
 
                         {position && (
-                            <div className="space-y-3 p-4 bg-gray-100 rounded-lg">
-                                <div className="grid grid-cols-2 gap-3 text-sm">
-                                    <div>
-                                        <span className="text-muted-foreground">Current Position:</span>
-                                        <p className="font-mono text-xs">
+                            <div className="space-y-3 p-4 bg-muted/50 rounded-xl border border-border">
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div className="space-y-1">
+                                        <span className="text-muted-foreground">Current Position</span>
+                                        <p className="font-mono text-xs text-foreground">
                                             {position.lat.toFixed(6)}, {position.lon.toFixed(6)}
                                         </p>
                                     </div>
-                                    <div>
-                                        <span className="text-muted-foreground">Distance to Station:</span>
-                                        <p className="font-semibold">
+                                    <div className="space-y-1">
+                                        <span className="text-muted-foreground">Target Station</span>
+                                        <p className="font-semibold text-foreground">
+                                            {currentTargetStation?.name || 'None'}
+                                        </p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <span className="text-muted-foreground">Distance to Station</span>
+                                        <p className="font-semibold text-foreground">
                                             {distanceToStation ? `${Math.round(distanceToStation)}m` : 'N/A'}
                                         </p>
                                     </div>
-                                    <div>
-                                        <span className="text-muted-foreground">ETA:</span>
-                                        <p className="font-semibold">{etaMinutes ? `${etaMinutes} min` : 'N/A'}</p>
+                                    <div className="space-y-1">
+                                        <span className="text-muted-foreground">ETA</span>
+                                        <p className="font-semibold text-foreground">{etaMinutes ? `${etaMinutes} min` : 'N/A'}</p>
                                     </div>
-                                    <div>
-                                        <span className="text-muted-foreground">Geofence Status:</span>
-                                        <Badge variant={insideGeofence ? 'default' : 'secondary'} className={insideGeofence ? 'bg-green-500 text-white' : ''}>
+                                    <div className="space-y-1">
+                                        <span className="text-muted-foreground">Geofence Status</span>
+                                        <Badge variant={insideGeofence ? 'accent' : 'secondary'}>
                                             {insideGeofence ? 'Inside' : 'Outside'}
                                         </Badge>
                                     </div>
@@ -530,17 +572,22 @@ export const DriverDashboard = () => {
                 </Card>
 
                 {/* Map */}
-                <Card className="rounded-2xl">
+                <Card>
                     <CardHeader>
-                        <CardTitle>Live Position</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                                <MapPin className="h-4 w-4 text-accent" />
+                            </div>
+                            <CardTitle>Live Position</CardTitle>
+                        </div>
                         <CardDescription>
-                            {firstStation
-                                ? `Tracking movement to ${firstStation.name}`
-                                : 'Select a station to view map'}
+                            {simulatorStations.length > 0
+                                ? `Tracking movement across ${simulatorStations.length} stations`
+                                : 'Select stations to view map'}
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="h-[350px] p-0">
-                        <GeoMap station={simulatorStation} driverPosition={position} />
+                    <CardContent className="h-[350px] p-0 overflow-hidden rounded-b-2xl">
+                        <GeoMap stations={simulatorStations} driverPosition={position} />
                     </CardContent>
                 </Card>
             </div>

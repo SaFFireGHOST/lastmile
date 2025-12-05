@@ -53,21 +53,21 @@ export function Notifications() {
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
+                <Button variant="ghost" size="icon" className="relative rounded-xl">
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
                         <Badge
-                            variant="destructive"
-                            className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                            variant="accent"
+                            className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center p-0 text-xs font-bold shadow-lime-glow"
                         >
                             {unreadCount > 9 ? '9+' : unreadCount}
                         </Badge>
                     )}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 p-0 z-[9999]" align="end">
-                <div className="flex items-center justify-between border-b px-4 py-3">
-                    <h3 className="font-semibold">Notifications</h3>
+            <PopoverContent className="w-80 p-0 z-[9999] rounded-2xl overflow-hidden" align="end">
+                <div className="flex items-center justify-between border-b px-4 py-3 bg-muted/30">
+                    <h3 className="font-semibold font-display">Notifications</h3>
                     {notifications.length > 0 && (
                         <div className="flex gap-2">
                             {unreadCount > 0 && (
@@ -75,7 +75,7 @@ export function Notifications() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => user?.id && markAllAsRead(user.id)}
-                                    className="h-7 text-xs"
+                                    className="h-7 text-xs hover:text-primary"
                                 >
                                     Mark all read
                                 </Button>
@@ -84,7 +84,7 @@ export function Notifications() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => user?.id && clearAll(user.id)}
-                                className="h-7 text-xs"
+                                className="h-7 text-xs hover:text-destructive"
                             >
                                 Clear all
                             </Button>
@@ -93,8 +93,10 @@ export function Notifications() {
                 </div>
                 <ScrollArea className="h-[400px]">
                     {notifications.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <Bell className="h-12 w-12 text-muted-foreground mb-2" />
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                                <Bell className="h-8 w-8 text-muted-foreground" />
+                            </div>
                             <p className="text-sm text-muted-foreground">No notifications yet</p>
                         </div>
                     ) : (
@@ -102,20 +104,20 @@ export function Notifications() {
                             {notifications.map((notification) => (
                                 <div
                                     key={notification.id}
-                                    className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${!notification.read ? 'bg-primary/5' : ''
+                                    className={`p-4 cursor-pointer hover:bg-muted/50 transition-all duration-200 ${!notification.read ? 'bg-accent/5 border-l-2 border-l-accent' : ''
                                         }`}
                                     onClick={() => !notification.read && markAsRead(notification.id)}
                                 >
                                     <div className="flex items-start justify-between gap-2 mb-1">
                                         <h4 className="font-medium text-sm">{notification.title}</h4>
                                         {!notification.read && (
-                                            <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1" />
+                                            <div className="h-2 w-2 rounded-full bg-accent flex-shrink-0 mt-1 shadow-lime-glow" />
                                         )}
                                     </div>
-                                    <p className="text-sm text-muted-foreground mb-1">
+                                    <p className="text-sm text-muted-foreground mb-2">
                                         {notification.message}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground/70">
                                         {formatDistanceToNow(notification.timestamp, { addSuffix: true })}
                                     </p>
                                 </div>
