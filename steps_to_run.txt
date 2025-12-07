@@ -34,7 +34,7 @@ To add stations to the database, you need to access the MongoDB running in the c
 
 1. Open a new terminal and port-forward MongoDB:
    ```bash
-   kubectl port-forward svc/mongo 27017:27017
+   kubectl port-forward svc/mongo 27018:27017
    ```
 
 2. Run the initialization script locally:
