@@ -232,6 +232,8 @@ spec:
           value: "trip-svc:50055"
         - name: NOTIFY_ADDR
           value: "notification-svc:50056"
+        - name: PYTHONUNBUFFERED
+          value: "1"
         resources:
           requests:
             cpu: "100m"

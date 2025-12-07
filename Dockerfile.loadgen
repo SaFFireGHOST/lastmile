@@ -1,0 +1,17 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install grpcio grpcio-tools protobuf
+
+# Copy generated protos
+COPY lastmile/v1 /app/lastmile/v1
+
+# Copy script
+COPY scripts/load_gen.py /app/scripts/load_gen.py
+
+# Set python path
+ENV PYTHONPATH=/app
+
+CMD ["python", "scripts/load_gen.py"]

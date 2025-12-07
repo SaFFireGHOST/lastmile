@@ -10,27 +10,32 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from lastmile.v1 import matching_pb2, matching_pb2_grpc
 
 def run_load():
-    # Connect to localhost:50057 (requires port-forward)
-    channel = grpc.insecure_channel('localhost:50057')
-    stub = matching_pb2_grpc.MatchingServiceStub(channel)
-    
-    print("Starting load generation on localhost:50057...")
+    target = os.environ.get('TARGET_ADDR', 'localhost:50057')
+    # print(f"Starting load generation on {target}...") # Moved to main to avoid spam
+
     while True:
         try:
-            # Send a dummy request
-            # We use dummy IDs. The service might return empty response or error, 
-            # but it will consume CPU to process the request (deserialization, logic, etc.)
-            stub.TryMatch(matching_pb2.TryMatchRequest(
-                driver_id="d1", 
-                route_id="r1", 
-                station_id="s1", 
-                arrival_eta_unix=int(time.time())
-            ))
-        except grpc.RpcError as e:
-            # Ignore errors, we just want to generate load
-            pass
+            # Re-create channel periodically to force re-balancing (L4 LB workaround)
+            with grpc.insecure_channel(target) as channel:
+                stub = matching_pb2_grpc.MatchingServiceStub(channel)
+                
+                # Send a batch of requests per connection
+                for _ in range(50):
+                    try:
+                        # Send a dummy request
+                        stub.TryMatch(matching_pb2.TryMatchRequest(
+                            driver_id="d1", 
+                            route_id="r1", 
+                            station_id="s1", 
+                            arrival_eta_unix=int(time.time())
+                        ))
+                    except grpc.RpcError:
+                        pass
+                    except Exception as e:
+                        print(f"Error sending request: {e}")
+                        time.sleep(1)
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Connection error: {e}")
             time.sleep(1)
 
 if __name__ == "__main__":
