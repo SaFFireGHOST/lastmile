@@ -14,7 +14,7 @@ from common.run import serve
 
 # Tunables (no speed/ETA used)
 GEOFENCE_METERS  = 400.0   # trigger radius around a station
-DEBOUNCE_SECONDS = 60      # suppress repeated triggers per (driver, station)
+DEBOUNCE_SECONDS = 30      # suppress repeated triggers per (driver, station)
 
 class LocationServer(location_pb2_grpc.LocationServiceServicer):
     def __init__(self):
@@ -76,10 +76,18 @@ class LocationServer(location_pb2_grpc.LocationServiceServicer):
                 if not st:
                     continue
 
-                # Geofence only (no speed/ETA math)
+                # Distance between driver and station
                 dist_m = haversine_m(loc.point.lat, loc.point.lon, st.lat, st.lon)
                 if dist_m > GEOFENCE_METERS:
                     continue
+
+                # --- NEW: ETA based on distance ---
+                AVG_SPEED_MPS = 10  # approx driving speed in m/s   
+                eta_minutes = (dist_m / AVG_SPEED_MPS) / 60.0
+
+                # If ETA is greater than allowed minutes_before_eta_match → skip
+                if eta_minutes > rs.minutes_before_eta_match:
+                    continue    
 
                 now = time.time()
                 if self._debounced(loc.driver_id, station_id, now):
